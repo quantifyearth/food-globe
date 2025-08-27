@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agricultural Impact Globe</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #globe-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            min-width: 250px;
+            z-index: 1000;
+        }
+
+        .selected-country {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+
+        .country-info {
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            max-width: 300px;
+            z-index: 1000;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading">Loading globe and data...</div>
+    
+    <div id="globe-container"></div>
+    
+    <div class="info-panel">
+        <div class="selected-country" id="selected-country">Click a country to select</div>
+        <div class="country-info" id="country-info">
+            Country codes available: <span id="available-countries">Loading...</span>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <strong>Instructions:</strong><br>
+        • Click on any country to select it<br>
+        • Selected countries will be highlighted<br>
+        • Country codes are shown in the info panel
+    </div>
+
+    <script src="//unpkg.com/globe.gl"></script>
+    <script>
+        let globe;
+        let countryData = [];
+        let availableCountryCodes = new Set();
+        let selectedCountry = null;
+
+        // Initialize globe
+        function initGlobe() {
+            globe = Globe()
+                .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
+                .backgroundColor('rgba(0,0,0,0)')
+                .showAtmosphere(true)
+                .atmosphereColor('lightblue')
+                .atmosphereAltitude(0.25);
+
+            globe(document.getElementById('globe-container'));
+
+            // Load country polygons data
+            fetch('//raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson')
+                .then(res => res.json())
+                .then(countries => {
+                    setupCountryInteraction(countries);
+                })
+                .catch(err => {
+                    console.error('Error loading country data:', err);
+                    document.getElementById('loading').textContent = 'Error loading country data';
+                });
+        }
+
+        // Load available country codes from the impact data
+        async function loadAvailableCountries() {
+            try {
+                // Use our API endpoint to get available countries
+                const response = await fetch('/api/countries');
+                if (response.ok) {
+                    const countries = await response.json();
+                    availableCountryCodes = new Set(countries);
+                    console.log(`Loaded ${countries.length} available countries:`, countries);
+                } else {
+                    console.log('API not available, using fallback country list');
+                    // Fallback: predefined list based on the SPEC.md information
+                    availableCountryCodes = new Set([
+                        'afg', 'ago', 'alb', 'are', 'arg', 'aus', 'aut', 'aze', 'bdi', 'bel', 'ben', 'bfa', 'bgd', 'bgr', 'bhr', 'bhs', 'bih', 'blr', 'blz', 'bol', 'bra', 'brb', 'btn', 'bwa', 'caf', 'can', 'che', 'chl', 'chn', 'civ', 'cmr', 'cod', 'cog', 'col', 'com', 'cpv', 'cri', 'cub', 'cyp', 'deu', 'dji', 'dma', 'dnk', 'dom', 'dza', 'ecu', 'egy', 'esp', 'est', 'eth', 'fin', 'fji', 'fra', 'fsm', 'gab', 'gbr', 'geo', 'gha', 'gin', 'gmb', 'gnb', 'grc', 'grd', 'gtm', 'guy', 'hkg', 'hnd', 'hrv', 'hti', 'hun', 'idn', 'ind', 'irl', 'irn', 'irq', 'isl', 'isr', 'ita', 'jam', 'jor', 'jpn', 'kaz', 'ken', 'kgz', 'khm', 'kir', 'kna', 'kor', 'kwt', 'lao', 'lbn', 'lbr', 'lby', 'lca', 'lka', 'lso', 'ltu', 'lux', 'lva', 'mac', 'mar', 'mdg', 'mdv', 'mex', 'mkd', 'mli', 'mlt', 'mmr', 'mne', 'mng', 'moz', 'mrt', 'mus', 'mwi', 'mys', 'nam', 'ncl', 'ner', 'nga', 'nic', 'nld', 'nor', 'npl', 'nru', 'nzl', 'omn', 'pan', 'per', 'phl', 'png', 'pol', 'prk', 'prt', 'pyf', 'qat', 'rou', 'rus', 'rwa', 'sau', 'sdn', 'sen', 'slb', 'sle', 'slv', 'srb', 'ssd', 'stp', 'sur', 'svk', 'svn', 'swe', 'swz', 'syc', 'syr', 'tcd', 'tgo', 'tha', 'tjk', 'tkm', 'tls', 'tto', 'tun', 'tur', 'tza', 'uga', 'ukr', 'ury', 'usa', 'uzb', 'vct', 'ven', 'vnm', 'vut', 'wsm', 'yem', 'zaf', 'zmb', 'zwe'
+                    ]);
+                }
+                
+                document.getElementById('available-countries').textContent = `${availableCountryCodes.size} countries`;
+            } catch (error) {
+                console.error('Error loading country codes:', error);
+                document.getElementById('available-countries').textContent = 'Error loading data';
+            }
+        }
+
+        // Setup country interaction
+        function setupCountryInteraction(countries) {
+            countryData = countries.features;
+
+            globe
+                .polygonsData(countries.features)
+                .polygonCapColor(feat => {
+                    const countryCode = getCountryCode(feat);
+                    if (selectedCountry === countryCode) {
+                        return 'rgba(255, 0, 0, 0.8)'; // Red for selected
+                    } else if (availableCountryCodes.has(countryCode)) {
+                        return 'rgba(76, 175, 80, 0.6)'; // Green for available countries
+                    } else {
+                        return 'rgba(100, 100, 100, 0.3)'; // Gray for unavailable
+                    }
+                })
+                .polygonSideColor(() => 'rgba(0, 100, 0, 0.05)')
+                .polygonStrokeColor(() => '#111')
+                .polygonAltitude(feat => {
+                    const countryCode = getCountryCode(feat);
+                    return selectedCountry === countryCode ? 0.02 : 0.01;
+                })
+                .polygonCapCurvatureResolution(4)
+                .onPolygonClick((polygon) => {
+                    const countryCode = getCountryCode(polygon);
+                    
+                    if (availableCountryCodes.has(countryCode)) {
+                        selectCountry(countryCode);
+                    } else {
+                        console.log(`Country ${countryCode} not available in dataset`);
+                        document.getElementById('selected-country').textContent = 
+                            `${countryCode.toUpperCase()} - No data available`;
+                    }
+                })
+                .onPolygonHover((polygon) => {
+                    if (polygon) {
+                        const countryCode = getCountryCode(polygon);
+                        document.getElementById('globe-container').style.cursor = 
+                            availableCountryCodes.has(countryCode) ? 'pointer' : 'default';
+                    } else {
+                        document.getElementById('globe-container').style.cursor = 'default';
+                    }
+                });
+
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // Extract country code from geojson feature
+        function getCountryCode(feature) {
+            // Common property names for country codes in geojson
+            return (feature.properties.ISO_A3 || 
+                   feature.properties.iso_a3 || 
+                   feature.properties.ADM0_A3 ||
+                   feature.properties.ADMIN ||
+                   feature.id || 
+                   '').toLowerCase();
+        }
+
+        // Select a country
+        function selectCountry(countryCode) {
+            selectedCountry = countryCode;
+            
+            // Update UI
+            document.getElementById('selected-country').textContent = 
+                `Selected: ${countryCode.toUpperCase()}`;
+            
+            // Log for debugging
+            console.log(`Selected country: ${countryCode}`);
+            
+            // Re-render polygons to update colors
+            globe.polygonsData(countryData);
+        }
+
+        // Initialize everything
+        async function init() {
+            await loadAvailableCountries();
+            initGlobe();
+        }
+
+        // Start the application
+        init();
+    </script>
+</body>
+</html>
