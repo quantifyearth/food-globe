@@ -111,6 +111,17 @@
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        
+        .section-stats {
+            font-size: 11px;
+            color: #aaa;
+            font-weight: normal;
+            text-transform: none;
+            letter-spacing: normal;
         }
 
         .data-item {
@@ -119,9 +130,30 @@
             background: rgba(255, 255, 255, 0.05);
             border-radius: 4px;
             border-left: 3px solid;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .impact-bar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.05));
+            z-index: 0;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .data-item-content {
+            position: relative;
+            z-index: 1;
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+        
+        .data-item-info {
+            flex: 1;
         }
 
         .data-item.high-impact {
@@ -553,13 +585,26 @@
                 }
             });
             
+            // Calculate total impacts for summaries
+            const domesticTotal = domesticArcs.reduce((sum, arc) => sum + arc.impact, 0);
+            const internationalTotal = internationalArcs.reduce((sum, arc) => sum + arc.impact, 0);
+            const totalImpact = domesticTotal + internationalTotal;
+            
+            // Find max impact for scaling bars
+            const allArcs = [...domesticArcs, ...internationalArcs];
+            const localMaxImpact = Math.max(...allArcs.map(arc => arc.impact));
+            
             dataInbox.style.display = 'block';
             dataList.innerHTML = '';
             
             // Add domestic section if there are domestic impacts
             if (domesticArcs.length > 0) {
                 const domesticHeader = document.createElement('h3');
-                domesticHeader.textContent = 'Domestic';
+                const domesticPercent = totalImpact > 0 ? ((domesticTotal / totalImpact) * 100).toFixed(1) : 0;
+                domesticHeader.innerHTML = `
+                    <span>Domestic</span>
+                    <span class="section-stats">${domesticPercent}% of total</span>
+                `;
                 domesticHeader.style.marginTop = '0';
                 dataList.appendChild(domesticHeader);
                 
@@ -567,11 +612,16 @@
                     const impactCategory = arc.impact > maxImpact * 0.7 ? 'high-impact' : 
                                          arc.impact > maxImpact * 0.3 ? 'medium-impact' : 'low-impact';
                     
+                    const barWidth = (arc.impact / localMaxImpact) * 100;
+                    
                     const dataItem = document.createElement('div');
                     dataItem.className = `data-item ${impactCategory}`;
                     dataItem.innerHTML = `
-                        <div class="commodity-name">${arc.commodity}</div>
-                        <div class="impact-value">${arc.impact.toExponential(2)}</div>
+                        <div class="impact-bar" style="width: ${barWidth}%"></div>
+                        <div class="data-item-content">
+                            <div class="commodity-name">${arc.commodity}</div>
+                            <div class="impact-value">${arc.impact.toExponential(2)}</div>
+                        </div>
                     `;
                     dataList.appendChild(dataItem);
                 });
@@ -580,7 +630,11 @@
             // Add international section if there are international impacts
             if (internationalArcs.length > 0) {
                 const internationalHeader = document.createElement('h3');
-                internationalHeader.textContent = 'International';
+                const internationalPercent = totalImpact > 0 ? ((internationalTotal / totalImpact) * 100).toFixed(1) : 0;
+                internationalHeader.innerHTML = `
+                    <span>International</span>
+                    <span class="section-stats">${internationalPercent}% of total</span>
+                `;
                 internationalHeader.style.marginTop = domesticArcs.length > 0 ? '15px' : '0';
                 dataList.appendChild(internationalHeader);
                 
@@ -588,14 +642,19 @@
                     const impactCategory = arc.impact > maxImpact * 0.7 ? 'high-impact' : 
                                          arc.impact > maxImpact * 0.3 ? 'medium-impact' : 'low-impact';
                     
+                    const barWidth = (arc.impact / localMaxImpact) * 100;
+                    
                     const dataItem = document.createElement('div');
                     dataItem.className = `data-item ${impactCategory}`;
                     dataItem.innerHTML = `
-                        <div>
-                            <div class="commodity-name">${arc.commodity}</div>
-                            <div class="source-country">From: ${getCountryName(arc.sourceCountry)}</div>
+                        <div class="impact-bar" style="width: ${barWidth}%"></div>
+                        <div class="data-item-content">
+                            <div class="data-item-info">
+                                <div class="commodity-name">${arc.commodity}</div>
+                                <div class="source-country">From: ${getCountryName(arc.sourceCountry)}</div>
+                            </div>
+                            <div class="impact-value">${arc.impact.toExponential(2)}</div>
                         </div>
-                        <div class="impact-value">${arc.impact.toExponential(2)}</div>
                     `;
                     dataList.appendChild(dataItem);
                 });
