@@ -35,6 +35,7 @@
             margin-top: 15px;
             padding-top: 15px;
             border-top: 1px solid #444;
+            position: relative;
         }
 
         .commodity-selector label {
@@ -45,7 +46,7 @@
             font-weight: bold;
         }
 
-        .commodity-selector select {
+        .commodity-selector input {
             width: 100%;
             padding: 8px;
             background: rgba(0, 0, 0, 0.6);
@@ -53,16 +54,75 @@
             border: 1px solid #444;
             border-radius: 4px;
             font-size: 13px;
-            cursor: pointer;
         }
 
-        .commodity-selector select:hover {
+        .commodity-selector input:focus {
+            outline: none;
             border-color: #4CAF50;
         }
 
-        .commodity-selector select option {
-            background: #222;
+        .commodity-selector input::placeholder {
+            color: #888;
+        }
+        
+        .commodity-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid #444;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            display: none;
+            z-index: 1001;
+        }
+        
+        .commodity-dropdown.show {
+            display: block;
+        }
+        
+        .commodity-option {
+            padding: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #ccc;
+            border-bottom: 1px solid rgba(68, 68, 68, 0.3);
+        }
+        
+        .commodity-option:hover,
+        .commodity-option.highlighted {
+            background: rgba(76, 175, 80, 0.2);
             color: #fff;
+        }
+        
+        .commodity-option.selected {
+            background: rgba(76, 175, 80, 0.3);
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        .commodity-clear {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #888;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            padding: 4px;
+            display: none;
+        }
+        
+        .commodity-clear:hover {
+            color: #fff;
+        }
+        
+        .commodity-selector.has-value .commodity-clear {
+            display: block;
         }
 
         .selected-country {
@@ -259,10 +319,12 @@
             Country codes available: <span id="available-countries">Loading...</span>
         </div>
         <div class="commodity-selector" id="commodity-selector" style="display: none;">
-            <label for="commodity-select">Filter by commodity:</label>
-            <select id="commodity-select">
-                <option value="">All commodities</option>
-            </select>
+            <label for="commodity-input">Filter by commodity:</label>
+            <div style="position: relative;">
+                <input type="text" id="commodity-input" placeholder="Type to search or select all..." autocomplete="off">
+                <span class="commodity-clear" id="commodity-clear">&times;</span>
+            </div>
+            <div class="commodity-dropdown" id="commodity-dropdown"></div>
         </div>
     </div>
 
@@ -633,12 +695,9 @@
             
             if (minImpact === maxImpact) return 'rgba(0, 255, 255, 0.8)';
             
-            // Normalize impact value between 0 and 1 using logarithmic scale
-            const logImpact = Math.log10(impact + 1e-10);
-            const logMin = Math.log10(minImpact + 1e-10);
-            const logMax = Math.log10(maxImpact + 1e-10);
-            const normalized = (logImpact - logMin) / (logMax - logMin);
-            const clamped = Math.max(0, Math.min(1, normalized));
+            // Use consistent categorization with sidebar
+            // High impact: > 70% of max, Medium: 30-70%, Low: < 30%
+            const impactRatio = impact / maxImpact;
             
             // Calculate opacity based on both impact and rank
             let opacity;
@@ -647,26 +706,36 @@
                 opacity = 1.0;
             } else if (rank <= 30) {
                 // Top 30: higher opacity range (0.3 to 0.9)
-                opacity = 0.3 + (clamped * 0.6);
+                const normalized = (impact - minImpact) / (maxImpact - minImpact);
+                opacity = 0.3 + (normalized * 0.6);
             } else {
                 // Beyond top 30: much lower opacity range (0.02 to 0.15)
-                opacity = 0.02 + (clamped * 0.13);
+                const normalized = (impact - minImpact) / (maxImpact - minImpact);
+                opacity = 0.02 + (normalized * 0.13);
             }
             
-            // Color gradient: green (low) -> yellow (medium) -> red (high)
+            // Color based on impact category (matching sidebar)
             // Highlighted arcs get brighter colors
             const brightness = arc.highlighted ? 1.2 : 1.0;
             
-            if (clamped < 0.5) {
-                // Green to yellow
-                const r = Math.min(255, Math.floor(clamped * 2 * 255 * brightness));
-                const g = Math.min(255, Math.floor(255 * brightness));
-                return `rgba(${r}, ${g}, 0, ${opacity})`;
-            } else {
-                // Yellow to red
+            if (impactRatio > 0.7) {
+                // High impact - red (matching .high-impact border color #ff4444)
                 const r = Math.min(255, Math.floor(255 * brightness));
-                const g = Math.min(255, Math.floor((1 - clamped) * 2 * 255 * brightness));
-                return `rgba(${r}, ${g}, 0, ${opacity})`;
+                const g = Math.min(255, Math.floor(68 * brightness));
+                const b = Math.min(255, Math.floor(68 * brightness));
+                return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+            } else if (impactRatio > 0.3) {
+                // Medium impact - orange/yellow (matching .medium-impact border color #ffaa44)
+                const r = Math.min(255, Math.floor(255 * brightness));
+                const g = Math.min(255, Math.floor(170 * brightness));
+                const b = Math.min(255, Math.floor(68 * brightness));
+                return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+            } else {
+                // Low impact - green (matching .low-impact border color #44ff44)
+                const r = Math.min(255, Math.floor(68 * brightness));
+                const g = Math.min(255, Math.floor(255 * brightness));
+                const b = Math.min(255, Math.floor(68 * brightness));
+                return `rgba(${r}, ${g}, ${b}, ${opacity})`;
             }
         }
         
@@ -950,38 +1019,146 @@
             // Sort arcs by impact value (highest first) and add rank
             arcs.sort((a, b) => b.impact - a.impact);
             
+            // Limit to top 100 arcs for performance
+            const maxArcs = 100;
+            const displayArcs = arcs.slice(0, maxArcs);
+            
             // Add rank to each arc for opacity calculation
-            arcs.forEach((arc, index) => {
+            displayArcs.forEach((arc, index) => {
                 arc.rank = index + 1;
             });
             
-            console.log(`Total trade routes: ${totalTradeRoutes}, Displaying all: ${arcs.length}`);
-            console.log(`First arc sample:`, arcs[0]);
+            console.log(`Total trade routes: ${totalTradeRoutes}, Displaying top ${displayArcs.length} of ${arcs.length}`);
+            console.log(`First arc sample:`, displayArcs[0]);
             
             return {
-                arcs: arcs,  // Return all arcs with rank information
+                arcs: displayArcs,  // Return limited arcs with rank information
                 totalRoutes: totalTradeRoutes
             };
         }
 
         // Populate commodity dropdown with available commodities
         function populateCommodityDropdown(impactData) {
-            const select = document.getElementById('commodity-select');
             const commodities = Object.keys(impactData).sort();
-            
-            // Clear existing options except "All commodities"
-            select.innerHTML = '<option value="">All commodities</option>';
-            
-            // Add each commodity as an option
-            commodities.forEach(commodity => {
-                const option = document.createElement('option');
-                option.value = commodity;
-                option.textContent = commodity;
-                select.appendChild(option);
-            });
+            window.availableCommodities = commodities; // Store for autocomplete
             
             // Show the commodity selector
             document.getElementById('commodity-selector').style.display = 'block';
+            
+            // Initialize autocomplete functionality
+            initializeCommodityAutocomplete(commodities);
+        }
+        
+        // Initialize the autocomplete functionality
+        function initializeCommodityAutocomplete(commodities) {
+            const input = document.getElementById('commodity-input');
+            const dropdown = document.getElementById('commodity-dropdown');
+            const clearBtn = document.getElementById('commodity-clear');
+            const selector = document.getElementById('commodity-selector');
+            let highlightedIndex = -1;
+            
+            // Set initial value if commodity is already selected
+            if (selectedCommodity) {
+                input.value = selectedCommodity;
+                selector.classList.add('has-value');
+            }
+            
+            // Function to filter and display commodities
+            function filterCommodities(searchTerm) {
+                const filtered = searchTerm ? 
+                    commodities.filter(c => c.toLowerCase().includes(searchTerm.toLowerCase())) :
+                    commodities;
+                
+                dropdown.innerHTML = '';
+                
+                // Add "All commodities" option at the top
+                const allOption = document.createElement('div');
+                allOption.className = 'commodity-option';
+                if (!selectedCommodity) allOption.classList.add('selected');
+                allOption.textContent = 'All commodities';
+                allOption.onclick = () => selectCommodity('');
+                dropdown.appendChild(allOption);
+                
+                // Add filtered commodities
+                filtered.forEach(commodity => {
+                    const option = document.createElement('div');
+                    option.className = 'commodity-option';
+                    if (commodity === selectedCommodity) option.classList.add('selected');
+                    option.textContent = commodity;
+                    option.onclick = () => selectCommodity(commodity);
+                    dropdown.appendChild(option);
+                });
+                
+                highlightedIndex = -1;
+                return filtered.length > 0 || !searchTerm;
+            }
+            
+            // Function to select a commodity
+            function selectCommodity(commodity) {
+                selectedCommodity = commodity;
+                input.value = commodity || '';
+                dropdown.classList.remove('show');
+                selector.classList.toggle('has-value', commodity !== '');
+                
+                // Trigger visualization refresh
+                console.log(`Selected commodity: ${selectedCommodity || 'All'}`);
+                refreshVisualization();
+            }
+            
+            // Input event handlers
+            input.addEventListener('focus', () => {
+                filterCommodities(input.value);
+                dropdown.classList.add('show');
+            });
+            
+            input.addEventListener('input', (e) => {
+                const hasResults = filterCommodities(e.target.value);
+                dropdown.classList.toggle('show', hasResults);
+                selector.classList.toggle('has-value', e.target.value !== '');
+            });
+            
+            // Keyboard navigation
+            input.addEventListener('keydown', (e) => {
+                const options = dropdown.querySelectorAll('.commodity-option');
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    highlightedIndex = Math.min(highlightedIndex + 1, options.length - 1);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    highlightedIndex = Math.max(highlightedIndex - 1, -1);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (highlightedIndex >= 0 && options[highlightedIndex]) {
+                        options[highlightedIndex].click();
+                    } else if (input.value) {
+                        // Find exact match
+                        const exactMatch = commodities.find(c => c.toLowerCase() === input.value.toLowerCase());
+                        selectCommodity(exactMatch || '');
+                    }
+                } else if (e.key === 'Escape') {
+                    dropdown.classList.remove('show');
+                    input.blur();
+                }
+                
+                // Update highlight
+                options.forEach((option, index) => {
+                    option.classList.toggle('highlighted', index === highlightedIndex);
+                });
+            });
+            
+            // Clear button
+            clearBtn.addEventListener('click', () => {
+                selectCommodity('');
+                input.focus();
+            });
+            
+            // Click outside to close
+            document.addEventListener('click', (e) => {
+                if (!selector.contains(e.target)) {
+                    dropdown.classList.remove('show');
+                }
+            });
         }
 
         // Refresh the visualization with current filters
@@ -1071,12 +1248,20 @@
             if (previousCommodity && countryImpactData[previousCommodity]) {
                 // Keep the previous commodity selection
                 selectedCommodity = previousCommodity;
-                document.getElementById('commodity-select').value = previousCommodity;
+                const input = document.getElementById('commodity-input');
+                if (input) {
+                    input.value = previousCommodity;
+                    document.getElementById('commodity-selector').classList.add('has-value');
+                }
             } else if (previousCommodity) {
                 // Commodity doesn't exist for this country, reset to all
                 console.log(`Commodity "${previousCommodity}" not available for ${countryCode}, showing all`);
                 selectedCommodity = '';
-                document.getElementById('commodity-select').value = '';
+                const input = document.getElementById('commodity-input');
+                if (input) {
+                    input.value = '';
+                    document.getElementById('commodity-selector').classList.remove('has-value');
+                }
             }
             
             // Refresh the visualization with current commodity filter
@@ -1090,13 +1275,6 @@
         async function init() {
             await loadAvailableCountries();
             initGlobe();
-            
-            // Add event listener for commodity dropdown
-            document.getElementById('commodity-select').addEventListener('change', (e) => {
-                selectedCommodity = e.target.value;
-                console.log(`Selected commodity: ${selectedCommodity || 'All'}`);
-                refreshVisualization();
-            });
         }
 
         // Start the application
