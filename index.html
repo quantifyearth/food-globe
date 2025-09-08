@@ -198,6 +198,66 @@
         let currentArcs = [];
         let minImpact = Number.MAX_VALUE;
         let maxImpact = Number.MIN_VALUE;
+        
+        // Country code to full name mapping
+        const countryNames = {
+            'afg': 'Afghanistan', 'ago': 'Angola', 'alb': 'Albania', 'are': 'United Arab Emirates',
+            'arg': 'Argentina', 'aus': 'Australia', 'aut': 'Austria', 'aze': 'Azerbaijan',
+            'bdi': 'Burundi', 'bel': 'Belgium', 'ben': 'Benin', 'bfa': 'Burkina Faso',
+            'bgd': 'Bangladesh', 'bgr': 'Bulgaria', 'bhr': 'Bahrain', 'bhs': 'Bahamas',
+            'bih': 'Bosnia and Herzegovina', 'blr': 'Belarus', 'blz': 'Belize', 'bol': 'Bolivia',
+            'bra': 'Brazil', 'brb': 'Barbados', 'btn': 'Bhutan', 'bwa': 'Botswana',
+            'caf': 'Central African Republic', 'can': 'Canada', 'che': 'Switzerland', 'chl': 'Chile',
+            'chn': 'China', 'civ': "Côte d'Ivoire", 'cmr': 'Cameroon', 'cod': 'Congo (DRC)',
+            'cog': 'Congo', 'col': 'Colombia', 'com': 'Comoros', 'cpv': 'Cape Verde',
+            'cri': 'Costa Rica', 'cub': 'Cuba', 'cyp': 'Cyprus', 'cze': 'Czech Republic',
+            'deu': 'Germany', 'dji': 'Djibouti', 'dma': 'Dominica', 'dnk': 'Denmark',
+            'dom': 'Dominican Republic', 'dza': 'Algeria', 'ecu': 'Ecuador', 'egy': 'Egypt',
+            'eri': 'Eritrea', 'esp': 'Spain', 'est': 'Estonia', 'eth': 'Ethiopia',
+            'fin': 'Finland', 'fji': 'Fiji', 'fra': 'France', 'fsm': 'Micronesia',
+            'gab': 'Gabon', 'gbr': 'United Kingdom', 'geo': 'Georgia', 'gha': 'Ghana',
+            'gin': 'Guinea', 'gmb': 'Gambia', 'gnb': 'Guinea-Bissau', 'gnq': 'Equatorial Guinea',
+            'grc': 'Greece', 'grd': 'Grenada', 'gtm': 'Guatemala', 'guy': 'Guyana',
+            'hkg': 'Hong Kong', 'hnd': 'Honduras', 'hrv': 'Croatia', 'hti': 'Haiti',
+            'hun': 'Hungary', 'idn': 'Indonesia', 'ind': 'India', 'irl': 'Ireland',
+            'irn': 'Iran', 'irq': 'Iraq', 'isl': 'Iceland', 'isr': 'Israel',
+            'ita': 'Italy', 'jam': 'Jamaica', 'jor': 'Jordan', 'jpn': 'Japan',
+            'kaz': 'Kazakhstan', 'ken': 'Kenya', 'kgz': 'Kyrgyzstan', 'khm': 'Cambodia',
+            'kir': 'Kiribati', 'kna': 'Saint Kitts and Nevis', 'kor': 'South Korea', 'kwt': 'Kuwait',
+            'lao': 'Laos', 'lbn': 'Lebanon', 'lbr': 'Liberia', 'lby': 'Libya',
+            'lca': 'Saint Lucia', 'lka': 'Sri Lanka', 'lso': 'Lesotho', 'ltu': 'Lithuania',
+            'lux': 'Luxembourg', 'lva': 'Latvia', 'mac': 'Macao', 'mar': 'Morocco',
+            'mda': 'Moldova', 'mdg': 'Madagascar', 'mdv': 'Maldives', 'mex': 'Mexico',
+            'mkd': 'North Macedonia', 'mli': 'Mali', 'mlt': 'Malta', 'mmr': 'Myanmar',
+            'mne': 'Montenegro', 'mng': 'Mongolia', 'moz': 'Mozambique', 'mrt': 'Mauritania',
+            'mus': 'Mauritius', 'mwi': 'Malawi', 'mys': 'Malaysia', 'nam': 'Namibia',
+            'ncl': 'New Caledonia', 'ner': 'Niger', 'nga': 'Nigeria', 'nic': 'Nicaragua',
+            'nld': 'Netherlands', 'nor': 'Norway', 'npl': 'Nepal', 'nru': 'Nauru',
+            'nzl': 'New Zealand', 'omn': 'Oman', 'pak': 'Pakistan', 'pan': 'Panama',
+            'per': 'Peru', 'phl': 'Philippines', 'png': 'Papua New Guinea', 'pol': 'Poland',
+            'pri': 'Puerto Rico', 'prk': 'North Korea', 'prt': 'Portugal', 'pry': 'Paraguay',
+            'pse': 'Palestine', 'pyf': 'French Polynesia', 'qat': 'Qatar', 'rou': 'Romania',
+            'rus': 'Russia', 'rwa': 'Rwanda', 'sau': 'Saudi Arabia', 'sdn': 'Sudan',
+            'sen': 'Senegal', 'sgp': 'Singapore', 'slb': 'Solomon Islands', 'sle': 'Sierra Leone',
+            'slv': 'El Salvador', 'smr': 'San Marino', 'som': 'Somalia', 'srb': 'Serbia',
+            'ssd': 'South Sudan', 'stp': 'São Tomé and Príncipe', 'sur': 'Suriname', 'svk': 'Slovakia',
+            'svn': 'Slovenia', 'swe': 'Sweden', 'swz': 'Eswatini', 'syc': 'Seychelles',
+            'syr': 'Syria', 'tcd': 'Chad', 'tgo': 'Togo', 'tha': 'Thailand',
+            'tjk': 'Tajikistan', 'tkm': 'Turkmenistan', 'tls': 'Timor-Leste', 'ton': 'Tonga',
+            'tto': 'Trinidad and Tobago', 'tun': 'Tunisia', 'tur': 'Turkey', 'tuv': 'Tuvalu',
+            'twn': 'Taiwan', 'tza': 'Tanzania', 'uga': 'Uganda', 'ukr': 'Ukraine',
+            'ury': 'Uruguay', 'usa': 'United States', 'uzb': 'Uzbekistan', 'vat': 'Vatican City',
+            'vct': 'Saint Vincent and the Grenadines', 'ven': 'Venezuela', 'vgb': 'British Virgin Islands',
+            'vir': 'U.S. Virgin Islands', 'vnm': 'Vietnam', 'vut': 'Vanuatu', 'wlf': 'Wallis and Futuna',
+            'wsm': 'Samoa', 'yem': 'Yemen', 'zaf': 'South Africa', 'zmb': 'Zambia', 'zwe': 'Zimbabwe'
+        };
+        
+        // Helper function to get country name from code
+        function getCountryName(code) {
+            if (!code) return '';
+            const lowerCode = code.toLowerCase();
+            return countryNames[lowerCode] || code.toUpperCase();
+        }
 
         // Initialize globe
         function initGlobe() {
@@ -449,7 +509,7 @@
                 dataItem.className = `data-item ${impactCategory}`;
                 dataItem.innerHTML = `
                     <div class="commodity-name">${arc.commodity}</div>
-                    <div class="source-country">From: ${arc.sourceCountry.toUpperCase()}</div>
+                    <div class="source-country">From: ${getCountryName(arc.sourceCountry)}</div>
                     <div class="impact-value">Impact: ${arc.impact.toExponential(3)}</div>
                 `;
                 dataList.appendChild(dataItem);
