@@ -105,17 +105,23 @@
         }
 
         .data-inbox h3 {
-            margin: 0 0 10px 0;
+            margin: 0 0 6px 0;
             color: #4CAF50;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .data-item {
-            margin-bottom: 8px;
-            padding: 6px;
+            margin-bottom: 4px;
+            padding: 4px 6px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 4px;
             border-left: 3px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .data-item.high-impact {
@@ -133,16 +139,20 @@
         .commodity-name {
             font-weight: bold;
             color: #fff;
+            flex: 1;
         }
 
         .source-country {
             color: #aaa;
             font-size: 11px;
+            margin-top: 2px;
         }
 
         .impact-value {
             color: #4CAF50;
             font-family: monospace;
+            font-size: 11px;
+            margin-left: 8px;
         }
 
         .loading {
@@ -561,7 +571,7 @@
                     dataItem.className = `data-item ${impactCategory}`;
                     dataItem.innerHTML = `
                         <div class="commodity-name">${arc.commodity}</div>
-                        <div class="impact-value">Impact: ${arc.impact.toExponential(3)}</div>
+                        <div class="impact-value">${arc.impact.toExponential(2)}</div>
                     `;
                     dataList.appendChild(dataItem);
                 });
@@ -581,9 +591,11 @@
                     const dataItem = document.createElement('div');
                     dataItem.className = `data-item ${impactCategory}`;
                     dataItem.innerHTML = `
-                        <div class="commodity-name">${arc.commodity}</div>
-                        <div class="source-country">From: ${getCountryName(arc.sourceCountry)}</div>
-                        <div class="impact-value">Impact: ${arc.impact.toExponential(3)}</div>
+                        <div>
+                            <div class="commodity-name">${arc.commodity}</div>
+                            <div class="source-country">From: ${getCountryName(arc.sourceCountry)}</div>
+                        </div>
+                        <div class="impact-value">${arc.impact.toExponential(2)}</div>
                     `;
                     dataList.appendChild(dataItem);
                 });
