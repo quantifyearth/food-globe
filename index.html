@@ -104,7 +104,36 @@
             font-size: 12px;
         }
 
-        .data-inbox h3 {
+        .data-inbox > h3 {
+            margin: 0 0 10px 0;
+            padding: 8px;
+            background: rgba(76, 175, 80, 0.1);
+            border-radius: 4px;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+        
+        .data-inbox > h3 .main-title {
+            color: #4CAF50;
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .data-inbox > h3 .variance-info {
+            font-size: 10px;
+            color: #aaa;
+            text-transform: none;
+            letter-spacing: normal;
+            margin-top: 4px;
+        }
+        
+        .data-inbox > h3 .variance-value {
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        .data-inbox h3:not(#data-inbox-header) {
             margin: 0 0 6px 0;
             color: #4CAF50;
             font-size: 13px;
@@ -122,6 +151,28 @@
             font-weight: normal;
             text-transform: none;
             letter-spacing: normal;
+        }
+        
+        .see-more-btn {
+            margin: 8px 0;
+            padding: 4px 8px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+            color: #4CAF50;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .see-more-btn:hover {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: #4CAF50;
+        }
+        
+        .data-item.collapsed {
+            display: none;
         }
 
         .data-item {
@@ -224,7 +275,7 @@
     </div>
 
     <div id="data-inbox" class="data-inbox" style="display: none;">
-        <h3>Impact Data</h3>
+        <h3 id="data-inbox-header">Impact Data</h3>
         <div id="data-list"></div>
     </div>
 
@@ -606,44 +657,33 @@
             const internationalTotal = internationalArcs.reduce((sum, arc) => sum + arc.impact, 0);
             const totalImpact = domesticTotal + internationalTotal;
             
-            // Find max impact for scaling bars
+            // Find max and min impact for scaling bars and variance calculation
             const allArcs = [...domesticArcs, ...internationalArcs];
             const localMaxImpact = Math.max(...allArcs.map(arc => arc.impact));
+            const localMinImpact = Math.min(...allArcs.map(arc => arc.impact));
+            
+            // Calculate spatial variance (orders of magnitude difference)
+            const ordersOfMagnitude = localMaxImpact > 0 && localMinImpact > 0 ? 
+                Math.log10(localMaxImpact / localMinImpact).toFixed(1) : 0;
             
             dataInbox.style.display = 'block';
             dataList.innerHTML = '';
             
-            // Add domestic section if there are domestic impacts
-            if (domesticArcs.length > 0) {
-                const domesticHeader = document.createElement('h3');
-                const domesticPercent = totalImpact > 0 ? ((domesticTotal / totalImpact) * 100).toFixed(1) : 0;
-                domesticHeader.innerHTML = `
-                    <span>Domestic</span>
-                    <span class="section-stats">${domesticPercent}% of total</span>
+            // Update the header with variance info if a commodity is selected
+            const header = document.getElementById('data-inbox-header');
+            if (selectedCommodity) {
+                header.innerHTML = `
+                    <div class="main-title">Impact Data - ${selectedCommodity}</div>
+                    <div class="variance-info">
+                        Spatial variance: <span class="variance-value">${ordersOfMagnitude}</span> orders of magnitude
+                        (${localMinImpact.toExponential(1)} to ${localMaxImpact.toExponential(1)})
+                    </div>
                 `;
-                domesticHeader.style.marginTop = '0';
-                dataList.appendChild(domesticHeader);
-                
-                domesticArcs.forEach(arc => {
-                    const impactCategory = arc.impact > maxImpact * 0.7 ? 'high-impact' : 
-                                         arc.impact > maxImpact * 0.3 ? 'medium-impact' : 'low-impact';
-                    
-                    const barWidth = (arc.impact / localMaxImpact) * 100;
-                    
-                    const dataItem = document.createElement('div');
-                    dataItem.className = `data-item ${impactCategory}`;
-                    dataItem.innerHTML = `
-                        <div class="impact-bar" style="width: ${barWidth}%"></div>
-                        <div class="data-item-content">
-                            <div class="commodity-name">${arc.commodity}</div>
-                            <div class="impact-value">${arc.impact.toExponential(2)}</div>
-                        </div>
-                    `;
-                    dataList.appendChild(dataItem);
-                });
+            } else {
+                header.innerHTML = '<div class="main-title">Impact Data</div>';
             }
             
-            // Add international section if there are international impacts
+            // Add international section first if there are international impacts
             if (internationalArcs.length > 0) {
                 const internationalHeader = document.createElement('h3');
                 const internationalPercent = totalImpact > 0 ? ((internationalTotal / totalImpact) * 100).toFixed(1) : 0;
@@ -651,17 +691,21 @@
                     <span>International</span>
                     <span class="section-stats">${internationalPercent}% of total</span>
                 `;
-                internationalHeader.style.marginTop = domesticArcs.length > 0 ? '15px' : '0';
+                internationalHeader.style.marginTop = '0';
                 dataList.appendChild(internationalHeader);
                 
-                internationalArcs.forEach(arc => {
+                const showLimit = 15;
+                const needsExpansion = internationalArcs.length > showLimit;
+                
+                internationalArcs.forEach((arc, index) => {
                     const impactCategory = arc.impact > maxImpact * 0.7 ? 'high-impact' : 
                                          arc.impact > maxImpact * 0.3 ? 'medium-impact' : 'low-impact';
                     
                     const barWidth = (arc.impact / localMaxImpact) * 100;
                     
                     const dataItem = document.createElement('div');
-                    dataItem.className = `data-item ${impactCategory}`;
+                    const isCollapsed = needsExpansion && index >= showLimit;
+                    dataItem.className = `data-item ${impactCategory} international-item ${isCollapsed ? 'collapsed' : ''}`;
                     dataItem.innerHTML = `
                         <div class="impact-bar" style="width: ${barWidth}%"></div>
                         <div class="data-item-content">
@@ -674,6 +718,82 @@
                     `;
                     dataList.appendChild(dataItem);
                 });
+                
+                // Add "see more/less" button if needed
+                if (needsExpansion) {
+                    const seeMoreBtn = document.createElement('div');
+                    seeMoreBtn.className = 'see-more-btn';
+                    seeMoreBtn.textContent = `See ${internationalArcs.length - showLimit} more`;
+                    seeMoreBtn.dataset.expanded = 'false';
+                    seeMoreBtn.dataset.section = 'international';
+                    seeMoreBtn.onclick = function() {
+                        const isExpanded = this.dataset.expanded === 'true';
+                        const items = document.querySelectorAll('.international-item');
+                        items.forEach((item, index) => {
+                            if (index >= showLimit) {
+                                item.classList.toggle('collapsed');
+                            }
+                        });
+                        this.dataset.expanded = !isExpanded;
+                        this.textContent = isExpanded ? `See ${internationalArcs.length - showLimit} more` : 'See less';
+                    };
+                    dataList.appendChild(seeMoreBtn);
+                }
+            }
+            
+            // Add domestic section after international if there are domestic impacts
+            if (domesticArcs.length > 0) {
+                const domesticHeader = document.createElement('h3');
+                const domesticPercent = totalImpact > 0 ? ((domesticTotal / totalImpact) * 100).toFixed(1) : 0;
+                domesticHeader.innerHTML = `
+                    <span>Domestic</span>
+                    <span class="section-stats">${domesticPercent}% of total</span>
+                `;
+                domesticHeader.style.marginTop = internationalArcs.length > 0 ? '15px' : '0';
+                dataList.appendChild(domesticHeader);
+                
+                const showLimit = 15;
+                const needsExpansion = domesticArcs.length > showLimit;
+                
+                domesticArcs.forEach((arc, index) => {
+                    const impactCategory = arc.impact > maxImpact * 0.7 ? 'high-impact' : 
+                                         arc.impact > maxImpact * 0.3 ? 'medium-impact' : 'low-impact';
+                    
+                    const barWidth = (arc.impact / localMaxImpact) * 100;
+                    
+                    const dataItem = document.createElement('div');
+                    const isCollapsed = needsExpansion && index >= showLimit;
+                    dataItem.className = `data-item ${impactCategory} domestic-item ${isCollapsed ? 'collapsed' : ''}`;
+                    dataItem.innerHTML = `
+                        <div class="impact-bar" style="width: ${barWidth}%"></div>
+                        <div class="data-item-content">
+                            <div class="commodity-name">${arc.commodity}</div>
+                            <div class="impact-value">${arc.impact.toExponential(2)}</div>
+                        </div>
+                    `;
+                    dataList.appendChild(dataItem);
+                });
+                
+                // Add "see more/less" button if needed
+                if (needsExpansion) {
+                    const seeMoreBtn = document.createElement('div');
+                    seeMoreBtn.className = 'see-more-btn';
+                    seeMoreBtn.textContent = `See ${domesticArcs.length - showLimit} more`;
+                    seeMoreBtn.dataset.expanded = 'false';
+                    seeMoreBtn.dataset.section = 'domestic';
+                    seeMoreBtn.onclick = function() {
+                        const isExpanded = this.dataset.expanded === 'true';
+                        const items = document.querySelectorAll('.domestic-item');
+                        items.forEach((item, index) => {
+                            if (index >= showLimit) {
+                                item.classList.toggle('collapsed');
+                            }
+                        });
+                        this.dataset.expanded = !isExpanded;
+                        this.textContent = isExpanded ? `See ${domesticArcs.length - showLimit} more` : 'See less';
+                    };
+                    dataList.appendChild(seeMoreBtn);
+                }
             }
         }
 
