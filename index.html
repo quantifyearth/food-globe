@@ -436,12 +436,31 @@
                     return 0.2;                       // Rest thinner
                 })
                 .arcAltitude(arc => {
-                    // Vary altitude based on impact for visual depth
+                    // Calculate distance between points to adjust altitude
+                    const dx = Math.abs(arc.startLng - arc.endLng);
+                    const dy = Math.abs(arc.startLat - arc.endLat);
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Scale altitude based on distance - longer arcs need more height
+                    // to avoid going through the globe
+                    const distanceRatio = Math.min(distance / 180, 1); // Normalize to 0-1
+                    const baseAltitude = 0.1 + (distanceRatio * 0.4); // 0.1 to 0.5 based on distance
+                    
+                    // Additional boost for very long distances (trans-oceanic routes)
+                    const longDistanceBoost = (dx > 150 || distance > 150) ? 0.3 : 0;
+                    
+                    // Vary by rank for visual hierarchy
                     const rank = arc.rank || 999;
-                    if (rank <= 10) return 0.3;      // Top 10 highest
-                    if (rank <= 30) return 0.2;      // Top 30 medium height
-                    return 0.1;                      // Rest lower
+                    let rankMultiplier = 1.0;
+                    if (rank <= 10) rankMultiplier = 1.2;      // Top 10 highest
+                    else if (rank <= 30) rankMultiplier = 1.0; // Top 30 medium
+                    else rankMultiplier = 0.8;                  // Rest lower
+                    
+                    return (baseAltitude + longDistanceBoost) * rankMultiplier;
                 })
+                .arcDashLength(1)     // Solid lines - no dashes
+                .arcDashGap(0)        // No gaps for solid appearance
+                .arcDashAnimateTime(0) // No animation
                 .arcColor(d => getArcColor(d))
                 .arcsTransitionDuration(600)
                 .onArcHover(arc => {
@@ -1020,11 +1039,25 @@
                         maxImpact = Math.max(maxImpact, impactValue);
                         
                         // Create arc from source to target
+                        // Normalize longitude to handle dateline crossing
+                        let startLng = sourceCoords.lng;
+                        let endLng = targetCoords.lng;
+                        
+                        // Ensure we take the shortest path around the globe
+                        const lngDiff = endLng - startLng;
+                        if (Math.abs(lngDiff) > 180) {
+                            if (lngDiff > 0) {
+                                startLng += 360;
+                            } else {
+                                endLng += 360;
+                            }
+                        }
+                        
                         arcs.push({
                             startLat: sourceCoords.lat,
-                            startLng: sourceCoords.lng,
+                            startLng: startLng,
                             endLat: targetCoords.lat,
-                            endLng: targetCoords.lng,
+                            endLng: endLng,
                             commodity: commodity,
                             impact: impactValue,
                             sourceCountry: sourceCountryCode
