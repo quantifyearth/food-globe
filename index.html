@@ -524,12 +524,46 @@
                 .polygonsData(countries.features)
                 .polygonCapColor(feat => {
                     const countryCode = getCountryCode(feat);
+                    
+                    // Selected country (target) gets gold highlight
                     if (selectedCountry === countryCode) {
-                        return 'rgba(255, 215, 0, 0.5)'; // Gold with lower opacity for selected
-                    } else if (hoveredCountry === countryCode && !selectedCountry) {
-                        return 'rgba(100, 180, 255, 0.6)'; // Light blue for hover when no selection
-                    } else if (availableCountryCodes.has(countryCode)) {
-                        return 'rgba(76, 175, 80, 0.6)'; // Green for available countries
+                        return 'rgba(255, 215, 0, 0.6)'; // Gold for selected target
+                    } 
+                    
+                    // Check if this country is a source in current arcs
+                    if (selectedCountry && currentArcs.length > 0) {
+                        const sourceArc = currentArcs.find(arc => 
+                            arc.sourceCountry.toLowerCase() === countryCode.toLowerCase()
+                        );
+                        if (sourceArc) {
+                            // Color source countries based on their impact (matching arc colors)
+                            const impactRatio = sourceArc.impact / maxImpact;
+                            let r, g, b;
+                            
+                            if (impactRatio > 0.7) {
+                                // High impact - red
+                                r = 255; g = 68; b = 68;
+                            } else if (impactRatio > 0.3) {
+                                // Medium impact - orange
+                                r = 255; g = 170; b = 68;
+                            } else {
+                                // Low impact - green
+                                r = 68; g = 255; b = 68;
+                            }
+                            
+                            // Use lower opacity for source countries
+                            return `rgba(${r}, ${g}, ${b}, 0.4)`;
+                        }
+                    }
+                    
+                    // Hover effect takes precedence over other states
+                    if (hoveredCountry === countryCode) {
+                        return 'rgba(100, 180, 255, 0.6)'; // Light blue for hover
+                    } 
+                    
+                    // Default colors for non-involved countries
+                    if (availableCountryCodes.has(countryCode)) {
+                        return 'rgba(76, 175, 80, 0.3)'; // Dimmer green for available countries
                     } else {
                         return 'rgba(100, 100, 100, 0.3)'; // Gray for unavailable
                     }
@@ -540,7 +574,7 @@
                     const countryCode = getCountryCode(feat);
                     if (selectedCountry === countryCode) {
                         return 0.02;
-                    } else if (hoveredCountry === countryCode && !selectedCountry) {
+                    } else if (hoveredCountry === countryCode) {
                         return 0.015;
                     } else {
                         return 0.01;
@@ -566,29 +600,25 @@
                         document.getElementById('globe-container').style.cursor = 
                             availableCountryCodes.has(countryCode) ? 'pointer' : 'default';
                         
-                        // Show country name on hover in top-left panel
-                        const countryName = getCountryName(countryCode);
+                        // Show country name on hover in top-left panel only if no selection
                         if (!selectedCountry) {
+                            const countryName = getCountryName(countryCode);
                             document.getElementById('selected-country').textContent = countryName;
                         }
                         
-                        // Re-render polygons to show hover effect
-                        if (!selectedCountry) {
-                            globe.polygonsData(countryData);
-                        }
+                        // Always re-render polygons to show hover effect
+                        globe.polygonsData(countryData);
                     } else {
                         hoveredCountry = null;
                         document.getElementById('globe-container').style.cursor = 'default';
                         
-                        // Reset display when not hovering
+                        // Reset display when not hovering only if no selection
                         if (!selectedCountry) {
                             document.getElementById('selected-country').textContent = 'Click a country to select';
                         }
                         
-                        // Re-render polygons to remove hover effect
-                        if (!selectedCountry) {
-                            globe.polygonsData(countryData);
-                        }
+                        // Always re-render polygons to remove hover effect
+                        globe.polygonsData(countryData);
                     }
                 });
 
@@ -1273,6 +1303,9 @@
             
             // Update data inbox
             updateDataInbox(arcs);
+            
+            // Re-render polygons to update source country colors
+            globe.polygonsData(countryData);
             
             // Update UI with summary
             const countryName = getCountryName(selectedCountry);
