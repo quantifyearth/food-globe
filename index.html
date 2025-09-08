@@ -357,15 +357,15 @@
     </div>
 
     <div class="instructions">
-        <strong>Instructions:</strong> Click countries to explore their food trade impacts. Arc colors range from <span style="color: #ff4444;">red</span> (high impact) to <span style="color: #44ff44;">green</span> (low impact).
+        Click countries to explore their food trade impacts. Arc colors range from <span style="color: #ff4444;">red</span> (high impact) to <span style="color: #44ff44;">green</span> (low impact).
         <br><br>
         <strong>What are LIFE scores?</strong><br>
-        LIFE (Land-use Impact on Future Extinctions) measures biodiversity impact. The scores represent the fraction of species extinctions attributable to land-use change. Higher scores indicate greater contribution to global species extinction risk. <a href="https://royalsocietypublishing.org/doi/10.1098/rstb.2023.0327" target="_blank" style="color: #4CAF50;">Learn more about LIFE methodology →</a>
+        LIFE (Land-use Impact on Future Extinctions) measures biodiversity impact. The scores represent the fraction of species extinctions attributable to land-use change. Higher scores indicate greater contribution to global species extinction risk. <a href="https://royalsocietypublishing.org/doi/10.1098/rstb.2023.0327" target="_blank" style="color: #4CAF50;">Learn more about the LIFE methodology →</a>
         <br><br>
         <strong>Data:</strong> <span style="position: relative; display: inline-block;">
             <span style="cursor: help; text-decoration: underline; text-decoration-style: dotted;" 
                   onmouseover="document.getElementById('ibat-tooltip').style.display='block'" 
-                  onmouseout="document.getElementById('ibat-tooltip').style.display='none'">CC-BY-SA</span>
+                  onmouseout="document.getElementById('ibat-tooltip').style.display='none'">CC-BY-SA license.</span>
             <div id="ibat-tooltip" style="display: none; position: absolute; bottom: 100%; left: 0; width: 350px; 
                  background: rgba(0, 0, 0, 0.95); color: #fff; padding: 12px; border-radius: 6px; 
                  border: 1px solid #444; font-size: 11px; line-height: 1.4; z-index: 10000; margin-bottom: 5px;">
@@ -374,7 +374,7 @@
                 IBAT licenses access to global biodiversity data for commercial use, specifically The IUCN Red List of Threatened Species™, The World Database on Protected Areas, 
                 and the World Database of Key Biodiversity Areas and derived data layers (STAR, RWR).
             </div>
-        </span>. Contact <a href="https://anil.recoil.org" target="_blank" style="color: #4CAF50;">Anil Madhavapeddy</a> with queries.
+        </span>.<br><i>Contact: <a href="https://anil.recoil.org" target="_blank" style="color: #4CAF50;">Anil Madhavapeddy</a> with queries.</i>
     </div>
 
     <div id="data-inbox" class="data-inbox" style="display: none;">
@@ -592,17 +592,17 @@
                 });
         }
 
-        // Load available country codes from the impact data
+        // Load available country codes from the local countries.json file
         async function loadAvailableCountries() {
             try {
-                // Use our API endpoint to get available countries
-                const response = await fetch('/api/countries');
+                // Load from local countries.json file
+                const response = await fetch('countries.json');
                 if (response.ok) {
                     const countries = await response.json();
                     availableCountryCodes = new Set(countries);
-                    console.log(`Loaded ${countries.length} available countries:`, countries);
+                    console.log(`Loaded ${countries.length} available countries from countries.json:`, countries);
                 } else {
-                    console.log('API not available, using fallback country list');
+                    console.log('countries.json not found, using fallback country list');
                     // Fallback: predefined list based on the SPEC.md information
                     availableCountryCodes = new Set([
                         'afg', 'ago', 'alb', 'are', 'arg', 'aus', 'aut', 'aze', 'bdi', 'bel', 'ben', 'bfa', 'bgd', 'bgr', 'bhr', 'bhs', 'bih', 'blr', 'blz', 'bol', 'bra', 'brb', 'btn', 'bwa', 'caf', 'can', 'che', 'chl', 'chn', 'civ', 'cmr', 'cod', 'cog', 'col', 'com', 'cpv', 'cri', 'cub', 'cyp', 'deu', 'dji', 'dma', 'dnk', 'dom', 'dza', 'ecu', 'egy', 'esp', 'est', 'eth', 'fin', 'fji', 'fra', 'fsm', 'gab', 'gbr', 'geo', 'gha', 'gin', 'gmb', 'gnb', 'grc', 'grd', 'gtm', 'guy', 'hkg', 'hnd', 'hrv', 'hti', 'hun', 'idn', 'ind', 'irl', 'irn', 'irq', 'isl', 'isr', 'ita', 'jam', 'jor', 'jpn', 'kaz', 'ken', 'kgz', 'khm', 'kir', 'kna', 'kor', 'kwt', 'lao', 'lbn', 'lbr', 'lby', 'lca', 'lka', 'lso', 'ltu', 'lux', 'lva', 'mac', 'mar', 'mdg', 'mdv', 'mex', 'mkd', 'mli', 'mlt', 'mmr', 'mne', 'mng', 'moz', 'mrt', 'mus', 'mwi', 'mys', 'nam', 'ncl', 'ner', 'nga', 'nic', 'nld', 'nor', 'npl', 'nru', 'nzl', 'omn', 'pan', 'per', 'phl', 'png', 'pol', 'prk', 'prt', 'pyf', 'qat', 'rou', 'rus', 'rwa', 'sau', 'sdn', 'sen', 'slb', 'sle', 'slv', 'srb', 'ssd', 'stp', 'sur', 'svk', 'svn', 'swe', 'swz', 'syc', 'syr', 'tcd', 'tgo', 'tha', 'tjk', 'tkm', 'tls', 'tto', 'tun', 'tur', 'tza', 'uga', 'ukr', 'ury', 'usa', 'uzb', 'vct', 'ven', 'vnm', 'vut', 'wsm', 'yem', 'zaf', 'zmb', 'zwe'
@@ -721,7 +721,7 @@
                             
                             // Reset display when not hovering only if no selection
                             if (!selectedCountry) {
-                                document.getElementById('selected-country').textContent = 'Click a country to select';
+                                document.getElementById('selected-country').textContent = 'Click a country to explore';
                             }
                         }
                         
