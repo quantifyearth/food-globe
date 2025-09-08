@@ -243,6 +243,12 @@
             border-left: 3px solid;
             position: relative;
             overflow: hidden;
+            transition: background-color 0.2s;
+        }
+        
+        .data-item.international-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            cursor: pointer;
         }
         
         .impact-bar {
@@ -296,6 +302,13 @@
             color: #aaa;
             font-size: 11px;
             margin-top: 2px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .source-country:hover {
+            color: #4CAF50;
+            text-decoration: underline;
         }
 
         .impact-value {
@@ -443,6 +456,23 @@
                     return 0.2;                       // Rest thinner
                 })
                 .arcAltitude(arc => {
+                    // Special case for New Zealand routes (NZL country code)
+                    const isNZRoute = arc.sourceCountry?.toLowerCase() === 'nzl' || 
+                                     arc.targetCountry?.toLowerCase() === 'nzl';
+                    
+                    // Check if it's a route to/from NZ and Europe/UK (very long distance)
+                    const isNZEuropeRoute = isNZRoute && (
+                        arc.sourceCountry?.toLowerCase() === 'gbr' || 
+                        arc.targetCountry?.toLowerCase() === 'gbr' ||
+                        (Math.abs(arc.startLng) < 30 && arc.startLat > 35 && arc.startLat < 70) || // Europe region
+                        (Math.abs(arc.endLng) < 30 && arc.endLat > 35 && arc.endLat < 70)
+                    );
+                    
+                    if (isNZEuropeRoute) {
+                        // Force very high altitude for NZ-Europe routes
+                        return 0.6;
+                    }
+                    
                     // Calculate distance between points to adjust altitude
                     const dx = Math.abs(arc.startLng - arc.endLng);
                     const dy = Math.abs(arc.startLat - arc.endLat);
@@ -456,6 +486,9 @@
                     // Additional boost for very long distances (trans-oceanic routes)
                     const longDistanceBoost = (dx > 150 || distance > 150) ? 0.15 : 0;
                     
+                    // Extra boost for New Zealand routes even if not to Europe
+                    const nzBoost = isNZRoute ? 0.2 : 0;
+                    
                     // Vary by rank for visual hierarchy
                     const rank = arc.rank || 999;
                     let rankMultiplier = 1.0;
@@ -463,7 +496,7 @@
                     else if (rank <= 30) rankMultiplier = 1.0; // Top 30 medium
                     else rankMultiplier = 0.9;                  // Rest slightly lower
                     
-                    return (baseAltitude + longDistanceBoost) * rankMultiplier;
+                    return (baseAltitude + longDistanceBoost + nzBoost) * rankMultiplier;
                 })
                 .arcDashLength(1)     // Solid lines - no dashes
                 .arcDashGap(0)        // No gaps for solid appearance
@@ -915,12 +948,13 @@
                     const dataItem = document.createElement('div');
                     const isCollapsed = needsExpansion && index >= showLimit;
                     dataItem.className = `data-item ${impactCategory} international-item ${isCollapsed ? 'collapsed' : ''}`;
+                    dataItem.title = `Hover to view ${getCountryName(arc.sourceCountry)} on globe`;
                     dataItem.innerHTML = `
                         <div class="impact-bar" style="width: ${barWidth}%"></div>
                         <div class="data-item-content">
                             <div class="data-item-info">
                                 <div class="commodity-name" title="Click to filter to ${arc.commodity}">${arc.commodity}</div>
-                                <div class="source-country">From: ${getCountryName(arc.sourceCountry)}</div>
+                                <div class="source-country" data-country="${arc.sourceCountry}">From: ${getCountryName(arc.sourceCountry)}</div>
                             </div>
                             <div class="impact-value">${arc.impact.toExponential(2)}</div>
                         </div>
@@ -936,6 +970,16 @@
                             });
                         }
                     }
+                    
+                    // Add hover handler to entire data item for international entries
+                    dataItem.addEventListener('mouseenter', (e) => {
+                        const countryCode = arc.sourceCountry;
+                        const coords = countryCoordinates[countryCode] || countryCoordinates[countryCode.toUpperCase()];
+                        if (coords) {
+                            // Smoothly rotate globe to show the source country
+                            globe.pointOfView({ lat: coords.lat, lng: coords.lng, altitude: 1.5 }, 1000);
+                        }
+                    });
                     
                     dataList.appendChild(dataItem);
                 });
@@ -1094,7 +1138,8 @@
                             endLng: endLng,
                             commodity: commodity,
                             impact: impactValue,
-                            sourceCountry: sourceCountryCode
+                            sourceCountry: sourceCountryCode,
+                            targetCountry: targetCountryCode
                         });
                         
                         // Log first few valid arcs for debugging
@@ -1446,6 +1491,12 @@
             
             // Refresh the visualization with current commodity filter
             refreshVisualization();
+            
+            // Center globe on the selected country
+            const targetCoords = countryCoordinates[countryCode] || countryCoordinates[countryCode.toUpperCase()];
+            if (targetCoords) {
+                globe.pointOfView({ lat: targetCoords.lat, lng: targetCoords.lng, altitude: 2.0 }, 1000);
+            }
             
             // Re-render polygons to update colors
             globe.polygonsData(countryData);
