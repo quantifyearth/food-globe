@@ -1057,6 +1057,29 @@
             const selector = document.getElementById('commodity-selector');
             let highlightedIndex = -1;
             
+            // Common aliases for food types
+            const commodityAliases = {
+                'beef': ['cattle', 'bovine'],
+                'pork': ['pig', 'swine', 'hog'],
+                'chicken': ['poultry', 'fowl'],
+                'lamb': ['sheep', 'mutton'],
+                'corn': ['maize'],
+                'soybeans': ['soya', 'soy'],
+                'wheat': ['grain'],
+                'fish': ['seafood', 'marine'],
+                'shrimp': ['prawn', 'crustacean'],
+                'dairy': ['milk', 'cheese', 'butter'],
+                'eggs': ['egg'],
+                'rice': ['paddy'],
+                'potato': ['potatoes'],
+                'tomato': ['tomatoes'],
+                'sugar': ['sugarcane', 'sugar beet'],
+                'coffee': ['coffee bean'],
+                'cocoa': ['chocolate', 'cacao'],
+                'palm': ['palm oil'],
+                'olive': ['olive oil']
+            };
+            
             // Set initial value if commodity is already selected
             if (selectedCommodity) {
                 input.value = selectedCommodity;
@@ -1065,9 +1088,49 @@
             
             // Function to filter and display commodities
             function filterCommodities(searchTerm) {
-                const filtered = searchTerm ? 
-                    commodities.filter(c => c.toLowerCase().includes(searchTerm.toLowerCase())) :
-                    commodities;
+                if (!searchTerm) {
+                    return commodities;
+                }
+                
+                const lowerSearch = searchTerm.toLowerCase();
+                const filtered = new Set();
+                
+                // Direct matches
+                commodities.forEach(c => {
+                    if (c.toLowerCase().includes(lowerSearch)) {
+                        filtered.add(c);
+                    }
+                });
+                
+                // Check aliases
+                Object.entries(commodityAliases).forEach(([alias, targets]) => {
+                    if (alias.includes(lowerSearch)) {
+                        // User typed an alias, find matching commodities
+                        commodities.forEach(c => {
+                            const lowerCommodity = c.toLowerCase();
+                            if (targets.some(target => lowerCommodity.includes(target))) {
+                                filtered.add(c);
+                            }
+                        });
+                    }
+                    // Also check if search matches any target
+                    targets.forEach(target => {
+                        if (target.includes(lowerSearch)) {
+                            commodities.forEach(c => {
+                                if (c.toLowerCase().includes(target)) {
+                                    filtered.add(c);
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                return Array.from(filtered);
+            }
+            
+            // Function to display filtered commodities in dropdown
+            function displayFilteredCommodities(searchTerm) {
+                const filtered = filterCommodities(searchTerm);
                 
                 dropdown.innerHTML = '';
                 
@@ -1107,12 +1170,12 @@
             
             // Input event handlers
             input.addEventListener('focus', () => {
-                filterCommodities(input.value);
+                displayFilteredCommodities(input.value);
                 dropdown.classList.add('show');
             });
             
             input.addEventListener('input', (e) => {
-                const hasResults = filterCommodities(e.target.value);
+                const hasResults = displayFilteredCommodities(e.target.value);
                 dropdown.classList.toggle('show', hasResults);
                 selector.classList.toggle('has-value', e.target.value !== '');
             });
