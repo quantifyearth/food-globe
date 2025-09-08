@@ -526,27 +526,68 @@
             const dataInbox = document.getElementById('data-inbox');
             const dataList = document.getElementById('data-list');
             
-            if (arcs.length === 0) {
+            if (arcs.length === 0 && !selectedCountry) {
                 dataInbox.style.display = 'none';
                 return;
             }
             
+            // Split arcs into domestic and international
+            const domesticArcs = [];
+            const internationalArcs = [];
+            
+            arcs.forEach(arc => {
+                if (arc.sourceCountry.toLowerCase() === selectedCountry.toLowerCase()) {
+                    domesticArcs.push(arc);
+                } else {
+                    internationalArcs.push(arc);
+                }
+            });
+            
             dataInbox.style.display = 'block';
             dataList.innerHTML = '';
             
-            arcs.forEach((arc, index) => {
-                const impactCategory = arc.impact > maxImpact * 0.7 ? 'high-impact' : 
-                                     arc.impact > maxImpact * 0.3 ? 'medium-impact' : 'low-impact';
+            // Add domestic section if there are domestic impacts
+            if (domesticArcs.length > 0) {
+                const domesticHeader = document.createElement('h3');
+                domesticHeader.textContent = 'Domestic';
+                domesticHeader.style.marginTop = '0';
+                dataList.appendChild(domesticHeader);
                 
-                const dataItem = document.createElement('div');
-                dataItem.className = `data-item ${impactCategory}`;
-                dataItem.innerHTML = `
-                    <div class="commodity-name">${arc.commodity}</div>
-                    <div class="source-country">From: ${getCountryName(arc.sourceCountry)}</div>
-                    <div class="impact-value">Impact: ${arc.impact.toExponential(3)}</div>
-                `;
-                dataList.appendChild(dataItem);
-            });
+                domesticArcs.forEach(arc => {
+                    const impactCategory = arc.impact > maxImpact * 0.7 ? 'high-impact' : 
+                                         arc.impact > maxImpact * 0.3 ? 'medium-impact' : 'low-impact';
+                    
+                    const dataItem = document.createElement('div');
+                    dataItem.className = `data-item ${impactCategory}`;
+                    dataItem.innerHTML = `
+                        <div class="commodity-name">${arc.commodity}</div>
+                        <div class="impact-value">Impact: ${arc.impact.toExponential(3)}</div>
+                    `;
+                    dataList.appendChild(dataItem);
+                });
+            }
+            
+            // Add international section if there are international impacts
+            if (internationalArcs.length > 0) {
+                const internationalHeader = document.createElement('h3');
+                internationalHeader.textContent = 'International';
+                internationalHeader.style.marginTop = domesticArcs.length > 0 ? '15px' : '0';
+                dataList.appendChild(internationalHeader);
+                
+                internationalArcs.forEach(arc => {
+                    const impactCategory = arc.impact > maxImpact * 0.7 ? 'high-impact' : 
+                                         arc.impact > maxImpact * 0.3 ? 'medium-impact' : 'low-impact';
+                    
+                    const dataItem = document.createElement('div');
+                    dataItem.className = `data-item ${impactCategory}`;
+                    dataItem.innerHTML = `
+                        <div class="commodity-name">${arc.commodity}</div>
+                        <div class="source-country">From: ${getCountryName(arc.sourceCountry)}</div>
+                        <div class="impact-value">Impact: ${arc.impact.toExponential(3)}</div>
+                    `;
+                    dataList.appendChild(dataItem);
+                });
+            }
         }
 
         // Create arcs from impact data
