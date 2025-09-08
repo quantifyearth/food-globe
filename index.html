@@ -192,6 +192,7 @@
         let countryData = [];
         let availableCountryCodes = new Set();
         let selectedCountry = null;
+        let hoveredCountry = null;
         let selectedCommodity = '';  // Empty string means show all
         let impactData = {};
         let countryCoordinates = {};
@@ -337,7 +338,9 @@
                 .polygonCapColor(feat => {
                     const countryCode = getCountryCode(feat);
                     if (selectedCountry === countryCode) {
-                        return 'rgba(255, 0, 0, 0.8)'; // Red for selected
+                        return 'rgba(255, 215, 0, 0.5)'; // Gold with lower opacity for selected
+                    } else if (hoveredCountry === countryCode && !selectedCountry) {
+                        return 'rgba(100, 180, 255, 0.6)'; // Light blue for hover when no selection
                     } else if (availableCountryCodes.has(countryCode)) {
                         return 'rgba(76, 175, 80, 0.6)'; // Green for available countries
                     } else {
@@ -348,7 +351,13 @@
                 .polygonStrokeColor(() => '#111')
                 .polygonAltitude(feat => {
                     const countryCode = getCountryCode(feat);
-                    return selectedCountry === countryCode ? 0.02 : 0.01;
+                    if (selectedCountry === countryCode) {
+                        return 0.02;
+                    } else if (hoveredCountry === countryCode && !selectedCountry) {
+                        return 0.015;
+                    } else {
+                        return 0.01;
+                    }
                 })
                 .polygonCapCurvatureResolution(4)
                 .onPolygonClick((polygon) => {
@@ -358,17 +367,41 @@
                         selectCountry(countryCode);
                     } else {
                         console.log(`Country ${countryCode} not available in dataset`);
+                        const countryName = getCountryName(countryCode);
                         document.getElementById('selected-country').textContent = 
-                            `${countryCode.toUpperCase()} - No data available`;
+                            `${countryName} - No data available`;
                     }
                 })
                 .onPolygonHover((polygon) => {
                     if (polygon) {
                         const countryCode = getCountryCode(polygon);
+                        hoveredCountry = countryCode;
                         document.getElementById('globe-container').style.cursor = 
                             availableCountryCodes.has(countryCode) ? 'pointer' : 'default';
+                        
+                        // Show country name on hover in top-left panel
+                        const countryName = getCountryName(countryCode);
+                        if (!selectedCountry) {
+                            document.getElementById('selected-country').textContent = countryName;
+                        }
+                        
+                        // Re-render polygons to show hover effect
+                        if (!selectedCountry) {
+                            globe.polygonsData(countryData);
+                        }
                     } else {
+                        hoveredCountry = null;
                         document.getElementById('globe-container').style.cursor = 'default';
+                        
+                        // Reset display when not hovering
+                        if (!selectedCountry) {
+                            document.getElementById('selected-country').textContent = 'Click a country to select';
+                        }
+                        
+                        // Re-render polygons to remove hover effect
+                        if (!selectedCountry) {
+                            globe.polygonsData(countryData);
+                        }
                     }
                 });
 
@@ -663,24 +696,28 @@
             updateDataInbox(arcs);
             
             // Update UI with summary
+            const countryName = getCountryName(selectedCountry);
             const commodityText = selectedCommodity ? ` - ${selectedCommodity}` : ' - All commodities';
             const commodityCount = Object.keys(impactData[selectedCountry]).length;
             const arcCount = arcs.length;
             document.getElementById('selected-country').textContent = 
-                `${selectedCountry.toUpperCase()}${commodityText} (${arcCount} trade routes)`;
+                `${countryName}${commodityText} (${arcCount} trade routes)`;
         }
 
         // Select a country
         async function selectCountry(countryCode) {
             selectedCountry = countryCode;
-            selectedCommodity = '';  // Reset commodity filter when selecting new country
+            // Keep the current commodity selection instead of resetting
+            const previousCommodity = selectedCommodity;
             
             // Update UI
+            const countryName = getCountryName(countryCode);
             document.getElementById('selected-country').textContent = 
-                `Loading data for: ${countryCode.toUpperCase()}`;
+                `Loading data for: ${countryName}`;
             
             // Log for debugging
             console.log(`Selected country: ${countryCode}`);
+            console.log(`Keeping commodity filter: ${previousCommodity || 'All'}`);
             
             // Clear existing labels first
             globe.htmlElementsData([]);
@@ -692,10 +729,19 @@
             // Populate commodity dropdown
             populateCommodityDropdown(countryImpactData);
             
-            // Reset commodity selector to "All commodities"
-            document.getElementById('commodity-select').value = '';
+            // Check if the previous commodity exists in the new country's data
+            if (previousCommodity && countryImpactData[previousCommodity]) {
+                // Keep the previous commodity selection
+                selectedCommodity = previousCommodity;
+                document.getElementById('commodity-select').value = previousCommodity;
+            } else if (previousCommodity) {
+                // Commodity doesn't exist for this country, reset to all
+                console.log(`Commodity "${previousCommodity}" not available for ${countryCode}, showing all`);
+                selectedCommodity = '';
+                document.getElementById('commodity-select').value = '';
+            }
             
-            // Refresh the visualization with all commodities
+            // Refresh the visualization with current commodity filter
             refreshVisualization();
             
             // Re-render polygons to update colors
