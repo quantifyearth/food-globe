@@ -337,6 +337,11 @@
     <div id="globe-container"></div>
     
     <div class="info-panel">
+        <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #444;">
+            <h2 style="margin: 0 0 8px 0; font-size: 18px; color: #fff;">Biodiversity impact of food consumption</h2>
+            <a href="https://www.nature.com/articles/s43016-025-01224-w" target="_blank" style="color: #4CAF50; text-decoration: none; font-size: 13px; display: block; margin-bottom: 4px;">View paper in Nature Food →</a>
+            <a href="https://www.conservation.cam.ac.uk" target="_blank" style="color: #4CAF50; text-decoration: none; font-size: 13px;">Cambridge Conservation Initiative →</a>
+        </div>
         <div class="selected-country" id="selected-country">Click a country to select</div>
         <div class="country-info" id="country-info">
             Country codes available: <span id="available-countries">Loading...</span>
@@ -352,11 +357,10 @@
     </div>
 
     <div class="instructions">
-        <strong>Instructions:</strong><br>
-        • Click on any country to select it<br>
-        • Selected countries will be highlighted<br>
-        • Country codes are shown in the info panel<br>
-        • Arc colors: <span style="color: #ff4444;">Red</span> (high impact) → <span style="color: #44ff44;">Green</span> (low impact)
+        <strong>Instructions:</strong> Click countries to explore their food trade impacts. Arc colors range from <span style="color: #ff4444;">red</span> (high impact) to <span style="color: #44ff44;">green</span> (low impact).
+        <br><br>
+        <strong>What are LIFE scores?</strong><br>
+        LIFE (Land-use Impact on Future Extinctions) measures biodiversity impact. The scores represent the fraction of species extinctions attributable to land-use change. Higher scores indicate greater contribution to global species extinction risk. <a href="https://royalsocietypublishing.org/doi/10.1098/rstb.2023.0327" target="_blank" style="color: #4CAF50;">Learn more about LIFE methodology →</a>
     </div>
 
     <div id="data-inbox" class="data-inbox" style="display: none;">
@@ -377,6 +381,7 @@
         let currentArcs = [];
         let minImpact = Number.MAX_VALUE;
         let maxImpact = Number.MIN_VALUE;
+        let isHoveringDataInbox = false;  // Track if mouse is over data inbox
         
         // Country code to full name mapping
         const countryNames = {
@@ -488,16 +493,17 @@
                     const dy = Math.abs(arc.startLat - arc.endLat);
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     
-                    // Scale altitude based on distance - longer arcs need more height
-                    // to avoid going through the globe
+                    // More aggressive altitude scaling for longer distances
+                    // Using exponential growth to ensure long arcs don't intersect Earth
                     const distanceRatio = Math.min(distance / 180, 1); // Normalize to 0-1
-                    const baseAltitude = 0.05 + (distanceRatio * 0.2); // 0.05 to 0.25 based on distance
+                    // Exponential curve: starts at 0.1, grows to 0.5 for max distance
+                    const baseAltitude = 0.1 + (Math.pow(distanceRatio, 1.5) * 0.4);
                     
                     // Additional boost for very long distances (trans-oceanic routes)
-                    const longDistanceBoost = (dx > 150 || distance > 150) ? 0.15 : 0;
+                    const longDistanceBoost = distance > 120 ? (distance - 120) / 200 * 0.3 : 0;
                     
                     // Extra boost for New Zealand routes even if not to Europe
-                    const nzBoost = isNZRoute ? 0.2 : 0;
+                    const nzBoost = isNZRoute ? 0.25 : 0;
                     
                     // Add small offset based on curveOffset to distinguish multiple arcs
                     const multiArcOffset = (arc.curveOffset || 0) * 0.05;
@@ -517,6 +523,11 @@
                 .arcColor(d => getArcColor(d))
                 .arcsTransitionDuration(600)
                 .onArcHover(arc => {
+                    // Don't handle arc hover if we're hovering over the data inbox
+                    if (isHoveringDataInbox) {
+                        return;
+                    }
+                    
                     if (arc && arc.rank <= 30) {  // Only handle hover for top 30 routes
                         // Highlight the hovered arc
                         const arcs = globe.arcsData();
@@ -669,6 +680,11 @@
                     }
                 })
                 .onPolygonHover((polygon) => {
+                    // Don't update hover state if we're hovering over the data inbox
+                    if (isHoveringDataInbox) {
+                        return;
+                    }
+                    
                     if (polygon) {
                         const countryCode = getCountryCode(polygon);
                         hoveredCountry = countryCode;
@@ -684,12 +700,15 @@
                         // Always re-render polygons to show hover effect
                         globe.polygonsData(countryData);
                     } else {
-                        hoveredCountry = null;
-                        document.getElementById('globe-container').style.cursor = 'default';
-                        
-                        // Reset display when not hovering only if no selection
-                        if (!selectedCountry) {
-                            document.getElementById('selected-country').textContent = 'Click a country to select';
+                        // Don't clear hover state if we're hovering over the data inbox
+                        if (!isHoveringDataInbox) {
+                            hoveredCountry = null;
+                            document.getElementById('globe-container').style.cursor = 'default';
+                            
+                            // Reset display when not hovering only if no selection
+                            if (!selectedCountry) {
+                                document.getElementById('selected-country').textContent = 'Click a country to select';
+                            }
                         }
                         
                         // Always re-render polygons to remove hover effect
@@ -1554,6 +1573,25 @@
 
         // Start the application
         init();
+        
+        // Add event listeners for data inbox hover tracking
+        document.addEventListener('DOMContentLoaded', () => {
+            const dataInbox = document.getElementById('data-inbox');
+            if (dataInbox) {
+                dataInbox.addEventListener('mouseenter', () => {
+                    isHoveringDataInbox = true;
+                    // Clear any existing hover state when entering data inbox
+                    if (hoveredCountry) {
+                        hoveredCountry = null;
+                        globe.polygonsData(countryData);
+                    }
+                });
+                
+                dataInbox.addEventListener('mouseleave', () => {
+                    isHoveringDataInbox = false;
+                });
+            }
+        });
     </script>
 </body>
 </html>
