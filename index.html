@@ -283,6 +283,13 @@
             font-weight: bold;
             color: #fff;
             flex: 1;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .commodity-name:hover {
+            color: #4CAF50;
+            text-decoration: underline;
         }
 
         .source-country {
@@ -444,17 +451,17 @@
                     // Scale altitude based on distance - longer arcs need more height
                     // to avoid going through the globe
                     const distanceRatio = Math.min(distance / 180, 1); // Normalize to 0-1
-                    const baseAltitude = 0.1 + (distanceRatio * 0.4); // 0.1 to 0.5 based on distance
+                    const baseAltitude = 0.05 + (distanceRatio * 0.2); // 0.05 to 0.25 based on distance
                     
                     // Additional boost for very long distances (trans-oceanic routes)
-                    const longDistanceBoost = (dx > 150 || distance > 150) ? 0.3 : 0;
+                    const longDistanceBoost = (dx > 150 || distance > 150) ? 0.15 : 0;
                     
                     // Vary by rank for visual hierarchy
                     const rank = arc.rank || 999;
                     let rankMultiplier = 1.0;
-                    if (rank <= 10) rankMultiplier = 1.2;      // Top 10 highest
+                    if (rank <= 10) rankMultiplier = 1.1;      // Top 10 slightly higher
                     else if (rank <= 30) rankMultiplier = 1.0; // Top 30 medium
-                    else rankMultiplier = 0.8;                  // Rest lower
+                    else rankMultiplier = 0.9;                  // Rest slightly lower
                     
                     return (baseAltitude + longDistanceBoost) * rankMultiplier;
                 })
@@ -497,6 +504,9 @@
                 });
 
             globe(document.getElementById('globe-container'));
+            
+            // Center on Europe by default (longitude: 10, latitude: 45)
+            globe.pointOfView({ lat: 45, lng: 10, altitude: 2.0 });
 
             // Load country polygons data
             fetch('//raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson')
@@ -909,12 +919,24 @@
                         <div class="impact-bar" style="width: ${barWidth}%"></div>
                         <div class="data-item-content">
                             <div class="data-item-info">
-                                <div class="commodity-name">${arc.commodity}</div>
+                                <div class="commodity-name" title="Click to filter to ${arc.commodity}">${arc.commodity}</div>
                                 <div class="source-country">From: ${getCountryName(arc.sourceCountry)}</div>
                             </div>
                             <div class="impact-value">${arc.impact.toExponential(2)}</div>
                         </div>
                     `;
+                    
+                    // Add click handler to commodity name if showing all commodities
+                    if (!selectedCommodity) {
+                        const commodityEl = dataItem.querySelector('.commodity-name');
+                        if (commodityEl) {
+                            commodityEl.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                filterToCommodity(arc.commodity);
+                            });
+                        }
+                    }
+                    
                     dataList.appendChild(dataItem);
                 });
                 
@@ -966,10 +988,22 @@
                     dataItem.innerHTML = `
                         <div class="impact-bar" style="width: ${barWidth}%"></div>
                         <div class="data-item-content">
-                            <div class="commodity-name">${arc.commodity}</div>
+                            <div class="commodity-name" title="Click to filter to ${arc.commodity}">${arc.commodity}</div>
                             <div class="impact-value">${arc.impact.toExponential(2)}</div>
                         </div>
                     `;
+                    
+                    // Add click handler to commodity name if showing all commodities
+                    if (!selectedCommodity) {
+                        const commodityEl = dataItem.querySelector('.commodity-name');
+                        if (commodityEl) {
+                            commodityEl.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                filterToCommodity(arc.commodity);
+                            });
+                        }
+                    }
+                    
                     dataList.appendChild(dataItem);
                 });
                 
@@ -1287,6 +1321,17 @@
             });
         }
 
+        // Function to filter to a specific commodity
+        function filterToCommodity(commodity) {
+            selectedCommodity = commodity;
+            const input = document.getElementById('commodity-input');
+            if (input) {
+                input.value = commodity;
+                document.getElementById('commodity-selector').classList.add('has-value');
+            }
+            refreshVisualization();
+        }
+        
         // Refresh the visualization with current filters
         function refreshVisualization() {
             if (!selectedCountry || !impactData[selectedCountry]) {
@@ -1336,6 +1381,12 @@
             
             // Update data inbox
             updateDataInbox(arcs);
+            
+            // Scroll impact data panel back to top
+            const dataInbox = document.getElementById('data-inbox');
+            if (dataInbox) {
+                dataInbox.scrollTop = 0;
+            }
             
             // Re-render polygons to update source country colors
             globe.polygonsData(countryData);
