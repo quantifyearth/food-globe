@@ -363,13 +363,45 @@
                 .atmosphereAltitude(0.25)
                 .arcsData([])
                 .arcColor(() => 'rgba(0, 255, 255, 0.9)')
-                .arcDashLength(0.9)  // Make lines more solid
-                .arcDashGap(0.05)     // Smaller gaps for more solid appearance
-                .arcDashAnimateTime(3000)
-                .arcStroke(0.3)       // Thinner lines - fixed width
-                .arcAltitude(0.2)
+                .arcDashLength(1)     // Solid lines - no dashes
+                .arcDashGap(0)        // No gaps for solid appearance
+                .arcDashAnimateTime(0) // No animation
+                .arcStroke(arc => {
+                    // Vary line thickness based on impact
+                    const rank = arc.rank || 999;
+                    if (rank <= 10) return 0.5;      // Top 10 thicker
+                    if (rank <= 30) return 0.3;      // Top 30 medium
+                    return 0.2;                       // Rest thinner
+                })
+                .arcAltitude(arc => {
+                    // Vary altitude based on impact for visual depth
+                    const rank = arc.rank || 999;
+                    if (rank <= 10) return 0.3;      // Top 10 highest
+                    if (rank <= 30) return 0.2;      // Top 30 medium height
+                    return 0.1;                      // Rest lower
+                })
                 .arcColor(d => getArcColor(d))
                 .arcsTransitionDuration(600)
+                .onArcHover(arc => {
+                    if (arc && arc.rank <= 30) {  // Only handle hover for top 30 routes
+                        // Highlight the hovered arc
+                        const arcs = globe.arcsData();
+                        arcs.forEach(a => {
+                            a.highlighted = a === arc;
+                        });
+                        globe.arcsData(arcs);
+                        
+                        // Scroll to the corresponding item in the impact data
+                        scrollToImpactItem(arc);
+                    } else {
+                        // Remove highlight
+                        const arcs = globe.arcsData();
+                        arcs.forEach(a => {
+                            a.highlighted = false;
+                        });
+                        globe.arcsData(arcs);
+                    }
+                })
                 .htmlElementsData([])
                 .htmlElement(d => {
                     const el = document.createElement('div');
@@ -610,7 +642,10 @@
             
             // Calculate opacity based on both impact and rank
             let opacity;
-            if (rank <= 30) {
+            if (arc.highlighted) {
+                // Highlighted arc gets full opacity
+                opacity = 1.0;
+            } else if (rank <= 30) {
                 // Top 30: higher opacity range (0.3 to 0.9)
                 opacity = 0.3 + (clamped * 0.6);
             } else {
@@ -619,14 +654,60 @@
             }
             
             // Color gradient: green (low) -> yellow (medium) -> red (high)
+            // Highlighted arcs get brighter colors
+            const brightness = arc.highlighted ? 1.2 : 1.0;
+            
             if (clamped < 0.5) {
                 // Green to yellow
-                const r = Math.floor(clamped * 2 * 255);
-                return `rgba(${r}, 255, 0, ${opacity})`;
+                const r = Math.min(255, Math.floor(clamped * 2 * 255 * brightness));
+                const g = Math.min(255, Math.floor(255 * brightness));
+                return `rgba(${r}, ${g}, 0, ${opacity})`;
             } else {
                 // Yellow to red
-                const g = Math.floor((1 - clamped) * 2 * 255);
-                return `rgba(255, ${g}, 0, ${opacity})`;
+                const r = Math.min(255, Math.floor(255 * brightness));
+                const g = Math.min(255, Math.floor((1 - clamped) * 2 * 255 * brightness));
+                return `rgba(${r}, ${g}, 0, ${opacity})`;
+            }
+        }
+        
+        // Scroll to impact item in the data panel
+        function scrollToImpactItem(arc) {
+            // Find the corresponding data item
+            const dataItems = document.querySelectorAll('.data-item');
+            let targetItem = null;
+            
+            dataItems.forEach(item => {
+                const commodityName = item.querySelector('.commodity-name')?.textContent;
+                const sourceCountry = item.querySelector('.source-country')?.textContent;
+                
+                if (commodityName === arc.commodity) {
+                    // Check if it's the right source country (for international) or domestic
+                    if (sourceCountry && sourceCountry.includes(getCountryName(arc.sourceCountry))) {
+                        targetItem = item;
+                    } else if (!sourceCountry && arc.sourceCountry.toLowerCase() === selectedCountry.toLowerCase()) {
+                        targetItem = item;
+                    }
+                }
+            });
+            
+            if (targetItem) {
+                // Only proceed if the item is not collapsed (don't auto-expand)
+                if (!targetItem.classList.contains('collapsed')) {
+                    // Highlight the item temporarily
+                    targetItem.style.transition = 'background-color 0.3s';
+                    const originalBg = targetItem.style.backgroundColor;
+                    targetItem.style.backgroundColor = 'rgba(76, 175, 80, 0.3)';
+                    
+                    // Scroll to the item
+                    const dataInbox = document.getElementById('data-inbox');
+                    const itemTop = targetItem.offsetTop - dataInbox.offsetTop;
+                    dataInbox.scrollTop = itemTop - 50; // 50px offset for better visibility
+                    
+                    // Remove highlight after a moment
+                    setTimeout(() => {
+                        targetItem.style.backgroundColor = originalBg;
+                    }, 2000);
+                }
             }
         }
 
