@@ -31,6 +31,40 @@
             z-index: 1000;
         }
 
+        .commodity-selector {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #444;
+        }
+
+        .commodity-selector label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4CAF50;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .commodity-selector select {
+            width: 100%;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .commodity-selector select:hover {
+            border-color: #4CAF50;
+        }
+
+        .commodity-selector select option {
+            background: #222;
+            color: #fff;
+        }
+
         .selected-country {
             font-size: 18px;
             font-weight: bold;
@@ -131,6 +165,12 @@
         <div class="country-info" id="country-info">
             Country codes available: <span id="available-countries">Loading...</span>
         </div>
+        <div class="commodity-selector" id="commodity-selector" style="display: none;">
+            <label for="commodity-select">Filter by commodity:</label>
+            <select id="commodity-select">
+                <option value="">All commodities</option>
+            </select>
+        </div>
     </div>
 
     <div class="instructions">
@@ -152,6 +192,7 @@
         let countryData = [];
         let availableCountryCodes = new Set();
         let selectedCountry = null;
+        let selectedCommodity = '';  // Empty string means show all
         let impactData = {};
         let countryCoordinates = {};
         let currentArcs = [];
@@ -420,6 +461,7 @@
             const arcs = [];
             
             console.log(`Creating arcs for target country: ${targetCountryCode}`);
+            console.log(`Selected commodity filter: ${selectedCommodity || 'All'}`);
             console.log(`Available country coordinates: ${Object.keys(countryCoordinates).length}`);
             console.log(`Impact data commodities: ${Object.keys(impactData).length}`);
             
@@ -441,6 +483,10 @@
 
             // First pass: collect all valid arcs and find min/max impact
             Object.entries(impactData).forEach(([commodity, sources]) => {
+                // Filter by selected commodity if one is selected
+                if (selectedCommodity && commodity !== selectedCommodity) {
+                    return;  // Skip this commodity if it doesn't match the filter
+                }
                 Object.entries(sources).forEach(([sourceCountryCode, impactValue]) => {
                     totalSourcesChecked++;
                     const sourceCoords = countryCoordinates[sourceCountryCode] || countryCoordinates[sourceCountryCode.toUpperCase()];
@@ -489,30 +535,38 @@
             };
         }
 
-        // Select a country
-        async function selectCountry(countryCode) {
-            selectedCountry = countryCode;
+        // Populate commodity dropdown with available commodities
+        function populateCommodityDropdown(impactData) {
+            const select = document.getElementById('commodity-select');
+            const commodities = Object.keys(impactData).sort();
             
-            // Update UI
-            document.getElementById('selected-country').textContent = 
-                `Loading data for: ${countryCode.toUpperCase()}`;
+            // Clear existing options except "All commodities"
+            select.innerHTML = '<option value="">All commodities</option>';
             
-            // Log for debugging
-            console.log(`Selected country: ${countryCode}`);
+            // Add each commodity as an option
+            commodities.forEach(commodity => {
+                const option = document.createElement('option');
+                option.value = commodity;
+                option.textContent = commodity;
+                select.appendChild(option);
+            });
             
-            // Clear existing labels first
-            globe.htmlElementsData([]);
+            // Show the commodity selector
+            document.getElementById('commodity-selector').style.display = 'block';
+        }
+
+        // Refresh the visualization with current filters
+        function refreshVisualization() {
+            if (!selectedCountry || !impactData[selectedCountry]) {
+                return;
+            }
             
-            // Load impact data for the selected country
-            const countryImpactData = await loadImpactData(countryCode);
-            impactData[countryCode] = countryImpactData;
-            
-            // Create arcs
-            const { arcs } = createArcsFromImpactData(countryCode, countryImpactData);
+            // Create arcs with current commodity filter
+            const { arcs } = createArcsFromImpactData(selectedCountry, impactData[selectedCountry]);
             currentArcs = arcs;
             
             // Update globe with arcs
-            console.log(`Updating globe with ${arcs.length} arcs`);
+            console.log(`Updating globe with ${arcs.length} arcs (commodity: ${selectedCommodity || 'all'})`);
             globe.arcsData(arcs);
             
             // Create labels for the arc endpoints (source countries)
@@ -532,12 +586,12 @@
             });
             
             // Add label for the selected target country
-            const targetCoords = countryCoordinates[countryCode] || countryCoordinates[countryCode.toUpperCase()];
+            const targetCoords = countryCoordinates[selectedCountry] || countryCoordinates[selectedCountry.toUpperCase()];
             if (targetCoords) {
                 labels.push({
                     lat: targetCoords.lat,
                     lng: targetCoords.lng,
-                    country: countryCode.toUpperCase()
+                    country: selectedCountry.toUpperCase()
                 });
             }
             
@@ -549,10 +603,40 @@
             updateDataInbox(arcs);
             
             // Update UI with summary
-            const commodityCount = Object.keys(countryImpactData).length;
+            const commodityText = selectedCommodity ? ` - ${selectedCommodity}` : ' - All commodities';
+            const commodityCount = Object.keys(impactData[selectedCountry]).length;
             const arcCount = arcs.length;
             document.getElementById('selected-country').textContent = 
-                `Selected: ${countryCode.toUpperCase()} - ${commodityCount} commodities, showing top ${arcCount} impacts`;
+                `${selectedCountry.toUpperCase()}${commodityText} (${arcCount} trade routes)`;
+        }
+
+        // Select a country
+        async function selectCountry(countryCode) {
+            selectedCountry = countryCode;
+            selectedCommodity = '';  // Reset commodity filter when selecting new country
+            
+            // Update UI
+            document.getElementById('selected-country').textContent = 
+                `Loading data for: ${countryCode.toUpperCase()}`;
+            
+            // Log for debugging
+            console.log(`Selected country: ${countryCode}`);
+            
+            // Clear existing labels first
+            globe.htmlElementsData([]);
+            
+            // Load impact data for the selected country
+            const countryImpactData = await loadImpactData(countryCode);
+            impactData[countryCode] = countryImpactData;
+            
+            // Populate commodity dropdown
+            populateCommodityDropdown(countryImpactData);
+            
+            // Reset commodity selector to "All commodities"
+            document.getElementById('commodity-select').value = '';
+            
+            // Refresh the visualization with all commodities
+            refreshVisualization();
             
             // Re-render polygons to update colors
             globe.polygonsData(countryData);
@@ -562,6 +646,13 @@
         async function init() {
             await loadAvailableCountries();
             initGlobe();
+            
+            // Add event listener for commodity dropdown
+            document.getElementById('commodity-select').addEventListener('change', (e) => {
+                selectedCommodity = e.target.value;
+                console.log(`Selected commodity: ${selectedCommodity || 'All'}`);
+                refreshVisualization();
+            });
         }
 
         // Start the application
