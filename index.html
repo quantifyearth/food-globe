@@ -55,6 +55,62 @@
             z-index: 1000;
         }
 
+        .data-inbox {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            width: 350px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1000;
+            font-size: 12px;
+        }
+
+        .data-inbox h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+            font-size: 14px;
+        }
+
+        .data-item {
+            margin-bottom: 8px;
+            padding: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            border-left: 3px solid;
+        }
+
+        .data-item.high-impact {
+            border-left-color: #ff4444;
+        }
+
+        .data-item.medium-impact {
+            border-left-color: #ffaa44;
+        }
+
+        .data-item.low-impact {
+            border-left-color: #44ff44;
+        }
+
+        .commodity-name {
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .source-country {
+            color: #aaa;
+            font-size: 11px;
+        }
+
+        .impact-value {
+            color: #4CAF50;
+            font-family: monospace;
+        }
+
         .loading {
             position: absolute;
             top: 50%;
@@ -81,7 +137,13 @@
         <strong>Instructions:</strong><br>
         • Click on any country to select it<br>
         • Selected countries will be highlighted<br>
-        • Country codes are shown in the info panel
+        • Country codes are shown in the info panel<br>
+        • Arc colors: <span style="color: #ff4444;">Red</span> (high impact) → <span style="color: #44ff44;">Green</span> (low impact)
+    </div>
+
+    <div id="data-inbox" class="data-inbox" style="display: none;">
+        <h3>Impact Data</h3>
+        <div id="data-list"></div>
     </div>
 
     <script src="//unpkg.com/globe.gl"></script>
@@ -90,6 +152,11 @@
         let countryData = [];
         let availableCountryCodes = new Set();
         let selectedCountry = null;
+        let impactData = {};
+        let countryCoordinates = {};
+        let currentArcs = [];
+        let minImpact = Number.MAX_VALUE;
+        let maxImpact = Number.MIN_VALUE;
 
         // Initialize globe
         function initGlobe() {
@@ -98,7 +165,16 @@
                 .backgroundColor('rgba(0,0,0,0)')
                 .showAtmosphere(true)
                 .atmosphereColor('lightblue')
-                .atmosphereAltitude(0.25);
+                .atmosphereAltitude(0.25)
+                .arcsData([])
+                .arcColor(() => 'rgba(0, 255, 255, 0.9)')
+                .arcDashLength(0.4)
+                .arcDashGap(0.2)
+                .arcDashAnimateTime(3000)
+                .arcStroke(d => Math.max(0.5, Math.log10(d.impact * 1000000) * 0.3))
+                .arcAltitude(0.2)
+                .arcColor(d => getArcColor(d.impact))
+                .labelsData([]);
 
             globe(document.getElementById('globe-container'));
 
@@ -107,6 +183,7 @@
                 .then(res => res.json())
                 .then(countries => {
                     setupCountryInteraction(countries);
+                    extractCountryCoordinates(countries);
                 })
                 .catch(err => {
                     console.error('Error loading country data:', err);
@@ -185,6 +262,70 @@
             document.getElementById('loading').style.display = 'none';
         }
 
+        // Extract country coordinates from geojson features
+        function extractCountryCoordinates(countries) {
+            countries.features.forEach(feature => {
+                const countryCode = getCountryCode(feature);
+                if (countryCode && feature.geometry) {
+                    // Calculate centroid for the country
+                    const coords = getCentroid(feature.geometry);
+                    if (coords) {
+                        countryCoordinates[countryCode] = {
+                            lat: coords[1],
+                            lng: coords[0]
+                        };
+                        // Also store uppercase version for matching
+                        countryCoordinates[countryCode.toUpperCase()] = {
+                            lat: coords[1],
+                            lng: coords[0]
+                        };
+                    }
+                }
+            });
+            console.log(`Extracted coordinates for ${Object.keys(countryCoordinates).length} countries`);
+            console.log(`Sample coordinates:`, Object.entries(countryCoordinates).slice(0, 5));
+        }
+
+        // Calculate centroid of a geometry
+        function getCentroid(geometry) {
+            if (geometry.type === 'Polygon') {
+                return getPolygonCentroid(geometry.coordinates[0]);
+            } else if (geometry.type === 'MultiPolygon') {
+                // Use the largest polygon's centroid
+                let largestArea = 0;
+                let largestPolygon = null;
+                geometry.coordinates.forEach(polygon => {
+                    const area = getPolygonArea(polygon[0]);
+                    if (area > largestArea) {
+                        largestArea = area;
+                        largestPolygon = polygon[0];
+                    }
+                });
+                return largestPolygon ? getPolygonCentroid(largestPolygon) : null;
+            }
+            return null;
+        }
+
+        // Calculate polygon centroid
+        function getPolygonCentroid(coordinates) {
+            let x = 0, y = 0;
+            coordinates.forEach(coord => {
+                x += coord[0];
+                y += coord[1];
+            });
+            return [x / coordinates.length, y / coordinates.length];
+        }
+
+        // Calculate polygon area (rough approximation)
+        function getPolygonArea(coordinates) {
+            let area = 0;
+            for (let i = 0; i < coordinates.length - 1; i++) {
+                area += coordinates[i][0] * coordinates[i + 1][1];
+                area -= coordinates[i + 1][0] * coordinates[i][1];
+            }
+            return Math.abs(area) / 2;
+        }
+
         // Extract country code from geojson feature
         function getCountryCode(feature) {
             // Common property names for country codes in geojson
@@ -196,16 +337,177 @@
                    '').toLowerCase();
         }
 
+        // Load impact data for a country
+        async function loadImpactData(countryCode) {
+            try {
+                const response = await fetch(`${countryCode}/impact_paths.json`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`Loaded impact data for ${countryCode}:`, Object.keys(data).length, 'commodities');
+                    return data;
+                } else {
+                    console.warn(`No impact data found for ${countryCode}`);
+                    return {};
+                }
+            } catch (error) {
+                console.error(`Error loading impact data for ${countryCode}:`, error);
+                return {};
+            }
+        }
+
+        // Get color for arc based on impact value
+        function getArcColor(impact) {
+            if (minImpact === maxImpact) return 'rgba(0, 255, 255, 0.8)';
+            
+            // Normalize impact value between 0 and 1
+            const normalized = Math.log10(impact + 1e-10) / Math.log10(maxImpact + 1e-10);
+            const clamped = Math.max(0, Math.min(1, normalized));
+            
+            // Color gradient: green (low) -> yellow (medium) -> red (high)
+            if (clamped < 0.5) {
+                // Green to yellow
+                const r = Math.floor(clamped * 2 * 255);
+                return `rgba(${r}, 255, 0, 0.8)`;
+            } else {
+                // Yellow to red
+                const g = Math.floor((1 - clamped) * 2 * 255);
+                return `rgba(255, ${g}, 0, 0.8)`;
+            }
+        }
+
+        // Update data inbox with current arc information
+        function updateDataInbox(arcs) {
+            const dataInbox = document.getElementById('data-inbox');
+            const dataList = document.getElementById('data-list');
+            
+            if (arcs.length === 0) {
+                dataInbox.style.display = 'none';
+                return;
+            }
+            
+            dataInbox.style.display = 'block';
+            dataList.innerHTML = '';
+            
+            arcs.forEach((arc, index) => {
+                const impactCategory = arc.impact > maxImpact * 0.7 ? 'high-impact' : 
+                                     arc.impact > maxImpact * 0.3 ? 'medium-impact' : 'low-impact';
+                
+                const dataItem = document.createElement('div');
+                dataItem.className = `data-item ${impactCategory}`;
+                dataItem.innerHTML = `
+                    <div class="commodity-name">${arc.commodity}</div>
+                    <div class="source-country">From: ${arc.sourceCountry.toUpperCase()}</div>
+                    <div class="impact-value">Impact: ${arc.impact.toExponential(3)}</div>
+                `;
+                dataList.appendChild(dataItem);
+            });
+        }
+
+        // Create arcs from impact data
+        function createArcsFromImpactData(targetCountryCode, impactData) {
+            const arcs = [];
+            
+            console.log(`Creating arcs for target country: ${targetCountryCode}`);
+            console.log(`Available country coordinates: ${Object.keys(countryCoordinates).length}`);
+            console.log(`Impact data commodities: ${Object.keys(impactData).length}`);
+            
+            const targetCoords = countryCoordinates[targetCountryCode] || countryCoordinates[targetCountryCode.toUpperCase()];
+            if (!targetCoords) {
+                console.warn(`No coordinates found for target country: ${targetCountryCode}`);
+                console.log(`Available coordinates:`, Object.keys(countryCoordinates).slice(0, 10));
+                return { arcs: [] };
+            }
+            
+            console.log(`Target coordinates for ${targetCountryCode}:`, targetCoords);
+
+            let validArcsCount = 0;
+            let totalSourcesChecked = 0;
+            
+            // Reset min/max impact values
+            minImpact = Number.MAX_VALUE;
+            maxImpact = Number.MIN_VALUE;
+
+            // First pass: collect all valid arcs and find min/max impact
+            Object.entries(impactData).forEach(([commodity, sources]) => {
+                Object.entries(sources).forEach(([sourceCountryCode, impactValue]) => {
+                    totalSourcesChecked++;
+                    const sourceCoords = countryCoordinates[sourceCountryCode] || countryCoordinates[sourceCountryCode.toUpperCase()];
+                    
+                    if (sourceCoords && impactValue > 0) {
+                        validArcsCount++;
+                        minImpact = Math.min(minImpact, impactValue);
+                        maxImpact = Math.max(maxImpact, impactValue);
+                        
+                        // Create arc from source to target
+                        arcs.push({
+                            startLat: sourceCoords.lat,
+                            startLng: sourceCoords.lng,
+                            endLat: targetCoords.lat,
+                            endLng: targetCoords.lng,
+                            commodity: commodity,
+                            impact: impactValue,
+                            sourceCountry: sourceCountryCode
+                        });
+                        
+                        // Log first few valid arcs for debugging
+                        if (validArcsCount <= 3) {
+                            console.log(`Arc ${validArcsCount}: ${sourceCountryCode} -> ${targetCountryCode} (${commodity}: ${impactValue})`);
+                        }
+                    } else if (!sourceCoords) {
+                        // Log missing coordinates for first few cases
+                        if (totalSourcesChecked <= 5) {
+                            console.log(`Missing coordinates for source: ${sourceCountryCode}`);
+                        }
+                    }
+                });
+            });
+            
+            console.log(`Total sources checked: ${totalSourcesChecked}, Valid arcs created: ${validArcsCount}`);
+            console.log(`Impact range: ${minImpact} to ${maxImpact}`);
+            
+            // Sort arcs by impact value (highest first) and limit to top 30
+            arcs.sort((a, b) => b.impact - a.impact);
+            const finalArcs = arcs.slice(0, 30);
+            
+            console.log(`Final arcs to display: ${finalArcs.length}`);
+            console.log(`First arc sample:`, finalArcs[0]);
+            
+            return {
+                arcs: finalArcs
+            };
+        }
+
         // Select a country
-        function selectCountry(countryCode) {
+        async function selectCountry(countryCode) {
             selectedCountry = countryCode;
             
             // Update UI
             document.getElementById('selected-country').textContent = 
-                `Selected: ${countryCode.toUpperCase()}`;
+                `Loading data for: ${countryCode.toUpperCase()}`;
             
             // Log for debugging
             console.log(`Selected country: ${countryCode}`);
+            
+            // Load impact data for the selected country
+            const countryImpactData = await loadImpactData(countryCode);
+            impactData[countryCode] = countryImpactData;
+            
+            // Create arcs
+            const { arcs } = createArcsFromImpactData(countryCode, countryImpactData);
+            currentArcs = arcs;
+            
+            // Update globe with arcs
+            console.log(`Updating globe with ${arcs.length} arcs`);
+            globe.arcsData(arcs);
+            
+            // Update data inbox
+            updateDataInbox(arcs);
+            
+            // Update UI with summary
+            const commodityCount = Object.keys(countryImpactData).length;
+            const arcCount = arcs.length;
+            document.getElementById('selected-country').textContent = 
+                `Selected: ${countryCode.toUpperCase()} - ${commodityCount} commodities, showing top ${arcCount} impacts`;
             
             // Re-render polygons to update colors
             globe.polygonsData(countryData);
