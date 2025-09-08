@@ -168,13 +168,25 @@
                 .atmosphereAltitude(0.25)
                 .arcsData([])
                 .arcColor(() => 'rgba(0, 255, 255, 0.9)')
-                .arcDashLength(0.4)
-                .arcDashGap(0.2)
+                .arcDashLength(0.9)  // Make lines more solid
+                .arcDashGap(0.05)     // Smaller gaps for more solid appearance
                 .arcDashAnimateTime(3000)
-                .arcStroke(d => Math.max(0.5, Math.log10(d.impact * 1000000) * 0.3))
+                .arcStroke(0.3)       // Thinner lines - fixed width
                 .arcAltitude(0.2)
                 .arcColor(d => getArcColor(d.impact))
-                .labelsData([]);
+                .arcsTransitionDuration(600)
+                .htmlElementsData([])
+                .htmlElement(d => {
+                    const el = document.createElement('div');
+                    el.innerHTML = d.country;
+                    el.style.color = 'white';
+                    el.style.fontSize = '11px';
+                    el.style.fontFamily = 'Arial, sans-serif';
+                    el.style.fontWeight = 'bold';
+                    el.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8)';
+                    el.style.pointerEvents = 'none';
+                    return el;
+                });
 
             globe(document.getElementById('globe-container'));
 
@@ -488,6 +500,9 @@
             // Log for debugging
             console.log(`Selected country: ${countryCode}`);
             
+            // Clear existing labels first
+            globe.htmlElementsData([]);
+            
             // Load impact data for the selected country
             const countryImpactData = await loadImpactData(countryCode);
             impactData[countryCode] = countryImpactData;
@@ -499,6 +514,36 @@
             // Update globe with arcs
             console.log(`Updating globe with ${arcs.length} arcs`);
             globe.arcsData(arcs);
+            
+            // Create labels for the arc endpoints (source countries)
+            const labels = [];
+            const labeledCountries = new Set();
+            
+            arcs.forEach(arc => {
+                // Add label for source country if not already added
+                if (!labeledCountries.has(arc.sourceCountry)) {
+                    labels.push({
+                        lat: arc.startLat,
+                        lng: arc.startLng,
+                        country: arc.sourceCountry.toUpperCase()
+                    });
+                    labeledCountries.add(arc.sourceCountry);
+                }
+            });
+            
+            // Add label for the selected target country
+            const targetCoords = countryCoordinates[countryCode] || countryCoordinates[countryCode.toUpperCase()];
+            if (targetCoords) {
+                labels.push({
+                    lat: targetCoords.lat,
+                    lng: targetCoords.lng,
+                    country: countryCode.toUpperCase()
+                });
+            }
+            
+            // Update labels on globe using HTML elements
+            console.log(`Setting ${labels.length} labels on globe:`, labels);
+            globe.htmlElementsData(labels);
             
             // Update data inbox
             updateDataInbox(arcs);
