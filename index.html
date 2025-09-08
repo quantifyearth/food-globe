@@ -329,12 +329,46 @@
             font-size: 18px;
             z-index: 1000;
         }
+        
+        .arc-tooltip {
+            position: absolute;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            border: 1px solid #666;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 10000;
+            display: none;
+            max-width: 250px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        .arc-tooltip .commodity-label {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        
+        .arc-tooltip .route-label {
+            color: #ccc;
+            font-size: 11px;
+            margin-bottom: 2px;
+        }
+        
+        .arc-tooltip .impact-label {
+            color: #4CAF50;
+            font-family: monospace;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
     <div id="loading" class="loading">Loading globe and data...</div>
     
     <div id="globe-container"></div>
+    
+    <div id="arc-tooltip" class="arc-tooltip"></div>
     
     <div class="info-panel">
         <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #444;">
@@ -542,6 +576,8 @@
                         return;
                     }
                     
+                    const tooltip = document.getElementById('arc-tooltip');
+                    
                     if (arc && arc.rank <= 30) {  // Only handle hover for top 30 routes
                         // Highlight the hovered arc
                         const arcs = globe.arcsData();
@@ -550,7 +586,36 @@
                         });
                         globe.arcsData(arcs);
                         
-                        // Scroll to the corresponding item in the impact data
+                        // Determine impact category and color
+                        const impactRatio = arc.impact / maxImpact;
+                        let borderColor, labelColor;
+                        if (impactRatio > 0.7) {
+                            // High impact - red
+                            borderColor = '#ff4444';
+                            labelColor = '#ff6666';
+                        } else if (impactRatio > 0.3) {
+                            // Medium impact - orange
+                            borderColor = '#ffaa44';
+                            labelColor = '#ffbb66';
+                        } else {
+                            // Low impact - green
+                            borderColor = '#44ff44';
+                            labelColor = '#66ff66';
+                        }
+                        
+                        // Show tooltip with appropriate color
+                        const sourceCountryName = getCountryName(arc.sourceCountry);
+                        const targetCountryName = getCountryName(arc.targetCountry);
+                        tooltip.innerHTML = `
+                            <div class="commodity-label" style="color: ${labelColor}">${arc.commodity}</div>
+                            <div class="route-label">${sourceCountryName} → ${targetCountryName}</div>
+                            <div class="impact-label">Impact: ${arc.impact.toExponential(2)}</div>
+                        `;
+                        tooltip.style.borderColor = borderColor;
+                        tooltip.style.boxShadow = `0 2px 8px ${borderColor}66`; // Add transparency to shadow
+                        tooltip.style.display = 'block';
+                        
+                        // Highlighting only - no scrolling
                         scrollToImpactItem(arc);
                     } else {
                         // Remove highlight
@@ -559,6 +624,12 @@
                             a.highlighted = false;
                         });
                         globe.arcsData(arcs);
+                        
+                        // Hide tooltip
+                        tooltip.style.display = 'none';
+                        
+                        // Clear all data panel highlights when not hovering any arc
+                        clearAllHighlights();
                     }
                 })
                 .htmlElementsData([])
@@ -877,8 +948,29 @@
             }
         }
         
+        // Track highlight timeouts to prevent overlapping
+        let highlightTimeouts = new Map();
+        
+        // Clear all highlights from data panel
+        function clearAllHighlights() {
+            highlightTimeouts.forEach((timeouts, item) => {
+                timeouts.forEach(timeout => clearTimeout(timeout));
+                // Reset styles immediately
+                item.style.borderLeftColor = '';
+                const impactValue = item.querySelector('.impact-value');
+                if (impactValue) {
+                    impactValue.style.color = '';
+                    impactValue.style.transform = '';
+                }
+            });
+            highlightTimeouts.clear();
+        }
+        
         // Scroll to impact item in the data panel
         function scrollToImpactItem(arc) {
+            // First, clear all existing highlights and timeouts
+            clearAllHighlights();
+            
             // Find the corresponding data item
             const dataItems = document.querySelectorAll('.data-item');
             let targetItem = null;
@@ -900,20 +992,35 @@
             if (targetItem) {
                 // Only proceed if the item is not collapsed (don't auto-expand)
                 if (!targetItem.classList.contains('collapsed')) {
-                    // Highlight the item temporarily
-                    targetItem.style.transition = 'background-color 0.3s';
-                    const originalBg = targetItem.style.backgroundColor;
-                    targetItem.style.backgroundColor = 'rgba(76, 175, 80, 0.3)';
+                    // Highlight the item by changing the left border color to bright cyan
+                    targetItem.style.transition = 'border-left-color 0.3s';
+                    targetItem.style.borderLeftColor = '#00ffff';  // Bright cyan to really pop
                     
-                    // Scroll to the item
-                    const dataInbox = document.getElementById('data-inbox');
-                    const itemTop = targetItem.offsetTop - dataInbox.offsetTop;
-                    dataInbox.scrollTop = itemTop - 50; // 50px offset for better visibility
+                    const impactValue = targetItem.querySelector('.impact-value');
+                    if (impactValue) {
+                        impactValue.style.transition = 'color 0.3s, transform 0.3s';
+                        impactValue.style.color = '#00ffff';  // Bright cyan
+                        impactValue.style.transform = 'scale(1.2)';  // Make it slightly bigger instead of bold
+                    }
                     
-                    // Remove highlight after a moment
-                    setTimeout(() => {
-                        targetItem.style.backgroundColor = originalBg;
-                    }, 2000);
+                    // Store timeouts for this item
+                    const timeouts = [];
+                    
+                    // Remove impact value highlight after a moment
+                    if (impactValue) {
+                        timeouts.push(setTimeout(() => {
+                            impactValue.style.color = '';
+                            impactValue.style.transform = '';
+                        }, 2000));
+                    }
+                    
+                    // Remove border highlight after a moment
+                    timeouts.push(setTimeout(() => {
+                        targetItem.style.borderLeftColor = '';
+                        highlightTimeouts.delete(targetItem);
+                    }, 2000));
+                    
+                    highlightTimeouts.set(targetItem, timeouts);
                 }
             }
         }
@@ -1587,6 +1694,30 @@
 
         // Start the application
         init();
+        
+        // Track mouse position for tooltip
+        let mouseX = 0, mouseY = 0;
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            // Update tooltip position if it's visible
+            const tooltip = document.getElementById('arc-tooltip');
+            if (tooltip && tooltip.style.display === 'block') {
+                // Position tooltip near cursor with offset
+                tooltip.style.left = (mouseX + 15) + 'px';
+                tooltip.style.top = (mouseY - 40) + 'px';
+                
+                // Keep tooltip on screen
+                const rect = tooltip.getBoundingClientRect();
+                if (rect.right > window.innerWidth) {
+                    tooltip.style.left = (mouseX - rect.width - 15) + 'px';
+                }
+                if (rect.top < 0) {
+                    tooltip.style.top = (mouseY + 15) + 'px';
+                }
+            }
+        });
         
         // Add event listeners for data inbox hover tracking
         document.addEventListener('DOMContentLoaded', () => {
