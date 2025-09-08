@@ -27,7 +27,7 @@
             padding: 20px;
             border-radius: 8px;
             border: 1px solid #333;
-            min-width: 250px;
+            width: 350px;
             z-index: 1000;
         }
 
@@ -130,6 +130,9 @@
             font-weight: bold;
             color: #4CAF50;
             margin-bottom: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .country-info {
@@ -361,7 +364,7 @@
         <div id="data-list"></div>
     </div>
 
-    <script src="//unpkg.com/globe.gl"></script>
+    <script src="https://unpkg.com/globe.gl@2.27.2/dist/globe.gl.min.js"></script>
     <script>
         let globe;
         let countryData = [];
@@ -437,6 +440,13 @@
 
         // Initialize globe
         function initGlobe() {
+            // Check if Globe is available
+            if (typeof Globe === 'undefined') {
+                console.error('Globe.gl library not loaded yet');
+                setTimeout(initGlobe, 100); // Retry after 100ms
+                return;
+            }
+            
             globe = Globe()
                 .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
                 .backgroundColor('rgba(0,0,0,0)')
@@ -489,6 +499,9 @@
                     // Extra boost for New Zealand routes even if not to Europe
                     const nzBoost = isNZRoute ? 0.2 : 0;
                     
+                    // Add small offset based on curveOffset to distinguish multiple arcs
+                    const multiArcOffset = (arc.curveOffset || 0) * 0.05;
+                    
                     // Vary by rank for visual hierarchy
                     const rank = arc.rank || 999;
                     let rankMultiplier = 1.0;
@@ -496,7 +509,7 @@
                     else if (rank <= 30) rankMultiplier = 1.0; // Top 30 medium
                     else rankMultiplier = 0.9;                  // Rest slightly lower
                     
-                    return (baseAltitude + longDistanceBoost + nzBoost) * rankMultiplier;
+                    return (baseAltitude + longDistanceBoost + nzBoost + multiArcOffset) * rankMultiplier;
                 })
                 .arcDashLength(1)     // Solid lines - no dashes
                 .arcDashGap(0)        // No gaps for solid appearance
@@ -1165,9 +1178,30 @@
             const maxArcs = 100;
             const displayArcs = arcs.slice(0, maxArcs);
             
-            // Add rank to each arc for opacity calculation
+            // Group arcs by source country to add offsets for multiple connections
+            const arcsBySource = {};
+            displayArcs.forEach(arc => {
+                const key = arc.sourceCountry;
+                if (!arcsBySource[key]) {
+                    arcsBySource[key] = [];
+                }
+                arcsBySource[key].push(arc);
+            });
+            
+            // Add rank and offset to each arc
             displayArcs.forEach((arc, index) => {
                 arc.rank = index + 1;
+                
+                // Add curve offset for multiple arcs from same source
+                const sourceArcs = arcsBySource[arc.sourceCountry];
+                if (sourceArcs.length > 1) {
+                    const arcIndex = sourceArcs.indexOf(arc);
+                    const totalArcs = sourceArcs.length;
+                    // Distribute offsets evenly from -0.5 to 0.5
+                    arc.curveOffset = (arcIndex - (totalArcs - 1) / 2) * 0.2;
+                } else {
+                    arc.curveOffset = 0;
+                }
             });
             
             console.log(`Total trade routes: ${totalTradeRoutes}, Displaying top ${displayArcs.length} of ${arcs.length}`);
@@ -1427,11 +1461,13 @@
             // Update data inbox
             updateDataInbox(arcs);
             
-            // Scroll impact data panel back to top
-            const dataInbox = document.getElementById('data-inbox');
-            if (dataInbox) {
-                dataInbox.scrollTop = 0;
-            }
+            // Scroll impact data panel back to top after DOM updates
+            setTimeout(() => {
+                const dataInbox = document.getElementById('data-inbox');
+                if (dataInbox) {
+                    dataInbox.scrollTop = 0;
+                }
+            }, 50); // Small delay to ensure DOM is updated
             
             // Re-render polygons to update source country colors
             globe.polygonsData(countryData);
@@ -1439,9 +1475,8 @@
             // Update UI with summary
             const countryName = getCountryName(selectedCountry);
             const commodityText = selectedCommodity ? ` - ${selectedCommodity}` : ' - All commodities';
-            const routeText = `${totalRoutes} trade routes`;
             document.getElementById('selected-country').textContent = 
-                `${countryName}${commodityText} (${routeText})`;
+                `${countryName}${commodityText} (${totalRoutes})`;
         }
 
         // Select a country
@@ -1492,10 +1527,19 @@
             // Refresh the visualization with current commodity filter
             refreshVisualization();
             
-            // Center globe on the selected country
+            // Ensure impact data panel is scrolled to top when selecting new country
+            setTimeout(() => {
+                const dataInbox = document.getElementById('data-inbox');
+                if (dataInbox) {
+                    dataInbox.scrollTop = 0;
+                }
+            }, 100); // Delay to ensure data is loaded
+            
+            // Position globe with selected country slightly above center for better arc visibility
             const targetCoords = countryCoordinates[countryCode] || countryCoordinates[countryCode.toUpperCase()];
             if (targetCoords) {
-                globe.pointOfView({ lat: targetCoords.lat, lng: targetCoords.lng, altitude: 2.0 }, 1000);
+                // Offset latitude by -15 degrees to position country in upper portion of view
+                globe.pointOfView({ lat: targetCoords.lat - 15, lng: targetCoords.lng, altitude: 2.0 }, 1000);
             }
             
             // Re-render polygons to update colors
