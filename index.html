@@ -317,7 +317,7 @@
                 .arcDashAnimateTime(3000)
                 .arcStroke(0.3)       // Thinner lines - fixed width
                 .arcAltitude(0.2)
-                .arcColor(d => getArcColor(d.impact))
+                .arcColor(d => getArcColor(d))
                 .arcsTransitionDuration(600)
                 .htmlElementsData([])
                 .htmlElement(d => {
@@ -544,22 +544,38 @@
         }
 
         // Get color for arc based on impact value
-        function getArcColor(impact) {
+        function getArcColor(arc) {
+            const impact = arc.impact;
+            const rank = arc.rank || 999; // rank will be set in createArcsFromImpactData
+            
             if (minImpact === maxImpact) return 'rgba(0, 255, 255, 0.8)';
             
-            // Normalize impact value between 0 and 1
-            const normalized = Math.log10(impact + 1e-10) / Math.log10(maxImpact + 1e-10);
+            // Normalize impact value between 0 and 1 using logarithmic scale
+            const logImpact = Math.log10(impact + 1e-10);
+            const logMin = Math.log10(minImpact + 1e-10);
+            const logMax = Math.log10(maxImpact + 1e-10);
+            const normalized = (logImpact - logMin) / (logMax - logMin);
             const clamped = Math.max(0, Math.min(1, normalized));
+            
+            // Calculate opacity based on both impact and rank
+            let opacity;
+            if (rank <= 30) {
+                // Top 30: higher opacity range (0.3 to 0.9)
+                opacity = 0.3 + (clamped * 0.6);
+            } else {
+                // Beyond top 30: much lower opacity range (0.02 to 0.15)
+                opacity = 0.02 + (clamped * 0.13);
+            }
             
             // Color gradient: green (low) -> yellow (medium) -> red (high)
             if (clamped < 0.5) {
                 // Green to yellow
                 const r = Math.floor(clamped * 2 * 255);
-                return `rgba(${r}, 255, 0, 0.8)`;
+                return `rgba(${r}, 255, 0, ${opacity})`;
             } else {
                 // Yellow to red
                 const g = Math.floor((1 - clamped) * 2 * 255);
-                return `rgba(255, ${g}, 0, 0.8)`;
+                return `rgba(255, ${g}, 0, ${opacity})`;
             }
         }
 
@@ -674,13 +690,14 @@
             if (!targetCoords) {
                 console.warn(`No coordinates found for target country: ${targetCountryCode}`);
                 console.log(`Available coordinates:`, Object.keys(countryCoordinates).slice(0, 10));
-                return { arcs: [] };
+                return { arcs: [], totalRoutes: 0 };
             }
             
             console.log(`Target coordinates for ${targetCountryCode}:`, targetCoords);
 
             let validArcsCount = 0;
             let totalSourcesChecked = 0;
+            let totalTradeRoutes = 0;
             
             // Reset min/max impact values
             minImpact = Number.MAX_VALUE;
@@ -698,6 +715,7 @@
                     
                     if (sourceCoords && impactValue > 0) {
                         validArcsCount++;
+                        totalTradeRoutes++;  // Count total trade routes
                         minImpact = Math.min(minImpact, impactValue);
                         maxImpact = Math.max(maxImpact, impactValue);
                         
@@ -728,15 +746,20 @@
             console.log(`Total sources checked: ${totalSourcesChecked}, Valid arcs created: ${validArcsCount}`);
             console.log(`Impact range: ${minImpact} to ${maxImpact}`);
             
-            // Sort arcs by impact value (highest first) and limit to top 30
+            // Sort arcs by impact value (highest first) and add rank
             arcs.sort((a, b) => b.impact - a.impact);
-            const finalArcs = arcs.slice(0, 30);
             
-            console.log(`Final arcs to display: ${finalArcs.length}`);
-            console.log(`First arc sample:`, finalArcs[0]);
+            // Add rank to each arc for opacity calculation
+            arcs.forEach((arc, index) => {
+                arc.rank = index + 1;
+            });
+            
+            console.log(`Total trade routes: ${totalTradeRoutes}, Displaying all: ${arcs.length}`);
+            console.log(`First arc sample:`, arcs[0]);
             
             return {
-                arcs: finalArcs
+                arcs: arcs,  // Return all arcs with rank information
+                totalRoutes: totalTradeRoutes
             };
         }
 
@@ -767,18 +790,21 @@
             }
             
             // Create arcs with current commodity filter
-            const { arcs } = createArcsFromImpactData(selectedCountry, impactData[selectedCountry]);
+            const { arcs, totalRoutes } = createArcsFromImpactData(selectedCountry, impactData[selectedCountry]);
             currentArcs = arcs;
             
             // Update globe with arcs
             console.log(`Updating globe with ${arcs.length} arcs (commodity: ${selectedCommodity || 'all'})`);
             globe.arcsData(arcs);
             
-            // Create labels for the arc endpoints (source countries)
+            // Create labels only for top 30 arc endpoints (source countries)
             const labels = [];
             const labeledCountries = new Set();
             
-            arcs.forEach(arc => {
+            // Only create labels for top 30 arcs
+            const top30Arcs = arcs.slice(0, 30);
+            
+            top30Arcs.forEach(arc => {
                 // Add label for source country if not already added
                 if (!labeledCountries.has(arc.sourceCountry)) {
                     labels.push({
@@ -810,10 +836,9 @@
             // Update UI with summary
             const countryName = getCountryName(selectedCountry);
             const commodityText = selectedCommodity ? ` - ${selectedCommodity}` : ' - All commodities';
-            const commodityCount = Object.keys(impactData[selectedCountry]).length;
-            const arcCount = arcs.length;
+            const routeText = `${totalRoutes} trade routes`;
             document.getElementById('selected-country').textContent = 
-                `${countryName}${commodityText} (${arcCount} trade routes)`;
+                `${countryName}${commodityText} (${routeText})`;
         }
 
         // Select a country
