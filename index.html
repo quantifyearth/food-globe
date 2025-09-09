@@ -1018,6 +1018,25 @@
                         const countryName = getCountryName(countryCode);
                         document.getElementById('selected-country').textContent = 
                             `${countryName} - No data available`;
+                        
+                        // Clear the data panel
+                        selectedCountry = null;
+                        currentArcs = [];
+                        globe.arcsData([]);
+                        globe.htmlElementsData([]);
+                        
+                        // Hide or clear the data inbox
+                        const dataInbox = document.getElementById('data-inbox');
+                        dataInbox.style.display = 'none';
+                        
+                        // Clear commodity selector
+                        const commoditySelector = document.getElementById('commodity-selector');
+                        if (commoditySelector) {
+                            commoditySelector.style.display = 'none';
+                        }
+                        
+                        // Re-render polygons to clear highlighting
+                        globe.polygonsData(countryData);
                     }
                 })
                 .onPolygonHover((polygon) => {
