@@ -2129,6 +2129,48 @@
             // Don't auto-show panel - let users interact with globe immediately
         }
         
+        // Handle window resize
+        function handleResize() {
+            if (globe) {
+                // Get the container dimensions
+                const container = document.getElementById('globe-container');
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                
+                // Update globe dimensions
+                globe.width(width);
+                globe.height(height);
+                
+                // Adjust mobile UI if needed
+                const isMobile = window.innerWidth <= 768;
+                const menuToggle = document.getElementById('mobile-menu-toggle');
+                const mobileMessage = document.querySelector('.mobile-message');
+                
+                if (isMobile) {
+                    menuToggle.style.display = 'block';
+                    if (mobileMessage) mobileMessage.style.display = 'block';
+                } else {
+                    menuToggle.style.display = 'none';
+                    if (mobileMessage) mobileMessage.style.display = 'none';
+                    
+                    // Close any open mobile panels when switching to desktop
+                    const panels = document.querySelectorAll('.mobile-visible');
+                    panels.forEach(panel => {
+                        panel.classList.remove('mobile-visible');
+                    });
+                    const overlay = document.getElementById('mobile-overlay');
+                    if (overlay) overlay.style.display = 'none';
+                }
+            }
+        }
+        
+        // Debounce resize events for performance
+        let resizeTimeout;
+        function debounceResize() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(handleResize, 250);
+        }
+        
         // Initialize everything
         async function init() {
             await loadAvailableCountries();
@@ -2144,6 +2186,9 @@
                     }
                 }, 1000);
             }
+            
+            // Add resize listener
+            window.addEventListener('resize', debounceResize);
         }
 
         // Start the application
