@@ -336,15 +336,15 @@
         }
 
         .data-item.high-impact {
-            border-left-color: #ff4444;
+            border-left-color: #ff6b9d;  /* Pink/Magenta - colorblind-friendly */
         }
 
         .data-item.medium-impact {
-            border-left-color: #ffaa44;
+            border-left-color: #ffd93d;  /* Yellow - works for all */
         }
 
         .data-item.low-impact {
-            border-left-color: #44ff44;
+            border-left-color: #6bcf7f;  /* Teal/Cyan - colorblind-friendly */
         }
 
         .commodity-name {
@@ -393,15 +393,15 @@
         }
         
         .impact-value.high-impact-value {
-            color: #ff6666;
+            color: #ff6b9d;  /* Pink/Magenta - colorblind-friendly */
         }
         
         .impact-value.medium-impact-value {
-            color: #ffbb66;
+            color: #ffd93d;  /* Yellow - colorblind-friendly */
         }
         
         .impact-value.low-impact-value {
-            color: #66ff66;
+            color: #6bcf7f;  /* Teal/Cyan - colorblind-friendly */
         }
         
         /* Tablet styles (768px - 1024px) - panels already sized correctly above */
@@ -650,7 +650,7 @@
     </div>
 
     <div class="instructions">
-        Click countries to explore their food trade impacts. Arc colors range from <span style="color: #ff4444;">red</span> (high impact) to <span style="color: #44ff44;">green</span> (low impact).
+        Click countries to explore their food trade impacts. Arc colors range from <span style="color: #ff6b9d;">pink</span> (high impact) through <span style="color: #ffd93d;">yellow</span> (medium) to <span style="color: #6bcf7f;">teal</span> (low impact).
         <br><br>
         <strong>What are LIFE scores?</strong><br>
         LIFE (Land-use Impact on Future Extinctions) measures biodiversity impact. The scores represent the fraction of species extinctions attributable to land-use change. Higher scores indicate greater contribution to global species extinction risk. <a href="https://royalsocietypublishing.org/doi/10.1098/rstb.2023.0327" target="_blank" style="color: #4CAF50;">Learn more about the LIFE methodology →</a>
@@ -853,17 +853,17 @@
                         const impactRatio = arc.impact / maxImpact;
                         let borderColor, labelColor;
                         if (impactRatio > 0.7) {
-                            // High impact - red
-                            borderColor = '#ff4444';
-                            labelColor = '#ff6666';
+                            // High impact - Pink/Magenta
+                            borderColor = '#ff6b9d';
+                            labelColor = '#ff8fb3';
                         } else if (impactRatio > 0.3) {
-                            // Medium impact - orange
-                            borderColor = '#ffaa44';
-                            labelColor = '#ffbb66';
+                            // Medium impact - Yellow
+                            borderColor = '#ffd93d';
+                            labelColor = '#ffe066';
                         } else {
-                            // Low impact - green
-                            borderColor = '#44ff44';
-                            labelColor = '#66ff66';
+                            // Low impact - Teal/Cyan
+                            borderColor = '#6bcf7f';
+                            labelColor = '#8fdc9f';
                         }
                         
                         // Show tooltip with appropriate color
@@ -970,19 +970,19 @@
                             arc.sourceCountry.toLowerCase() === countryCode.toLowerCase()
                         );
                         if (sourceArc) {
-                            // Color source countries based on their impact (matching arc colors)
+                            // Color source countries based on their impact (colorblind-friendly)
                             const impactRatio = sourceArc.impact / maxImpact;
                             let r, g, b;
                             
                             if (impactRatio > 0.7) {
-                                // High impact - red
-                                r = 255; g = 68; b = 68;
+                                // High impact - Pink/Magenta
+                                r = 255; g = 107; b = 157;
                             } else if (impactRatio > 0.3) {
-                                // Medium impact - orange
-                                r = 255; g = 170; b = 68;
+                                // Medium impact - Yellow
+                                r = 255; g = 217; b = 61;
                             } else {
-                                // Low impact - green
-                                r = 68; g = 255; b = 68;
+                                // Low impact - Teal/Cyan
+                                r = 107; g = 207; b = 127;
                             }
                             
                             // Use lower opacity for source countries
@@ -1227,22 +1227,22 @@
             const brightness = arc.highlighted ? 1.2 : 1.0;
             
             if (impactRatio > 0.7) {
-                // High impact - red (matching .high-impact border color #ff4444)
+                // High impact - Pink/Magenta (colorblind-friendly)
                 const r = Math.min(255, Math.floor(255 * brightness));
-                const g = Math.min(255, Math.floor(68 * brightness));
-                const b = Math.min(255, Math.floor(68 * brightness));
+                const g = Math.min(255, Math.floor(107 * brightness));
+                const b = Math.min(255, Math.floor(157 * brightness));
                 return `rgba(${r}, ${g}, ${b}, ${opacity})`;
             } else if (impactRatio > 0.3) {
-                // Medium impact - orange/yellow (matching .medium-impact border color #ffaa44)
+                // Medium impact - Yellow (works for all color vision types)
                 const r = Math.min(255, Math.floor(255 * brightness));
-                const g = Math.min(255, Math.floor(170 * brightness));
-                const b = Math.min(255, Math.floor(68 * brightness));
+                const g = Math.min(255, Math.floor(217 * brightness));
+                const b = Math.min(255, Math.floor(61 * brightness));
                 return `rgba(${r}, ${g}, ${b}, ${opacity})`;
             } else {
-                // Low impact - green (matching .low-impact border color #44ff44)
-                const r = Math.min(255, Math.floor(68 * brightness));
-                const g = Math.min(255, Math.floor(255 * brightness));
-                const b = Math.min(255, Math.floor(68 * brightness));
+                // Low impact - Teal/Cyan (colorblind-friendly)
+                const r = Math.min(255, Math.floor(107 * brightness));
+                const g = Math.min(255, Math.floor(207 * brightness));
+                const b = Math.min(255, Math.floor(127 * brightness));
                 return `rgba(${r}, ${g}, ${b}, ${opacity})`;
             }
         }
