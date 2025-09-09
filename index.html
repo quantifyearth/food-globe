@@ -1974,6 +1974,10 @@
         // Select a country - make it globally accessible
         window.selectCountry = async function(countryCode) {
             selectedCountry = countryCode;
+            
+            // Update URL fragment
+            window.history.pushState(null, '', '#' + countryCode);
+            
             // Keep the current commodity selection instead of resetting
             const previousCommodity = selectedCommodity;
             
@@ -2177,6 +2181,15 @@
             initGlobe();
             setupMobileUI();
             
+            // Check for country in URL fragment
+            const fragment = window.location.hash.substring(1);
+            if (fragment && availableCountryCodes.has(fragment.toLowerCase())) {
+                // Wait a moment for the globe to be ready, then select the country
+                setTimeout(() => {
+                    selectCountry(fragment.toLowerCase());
+                }, 1500);
+            }
+            
             // Adjust globe view for mobile
             if (window.innerWidth <= 768) {
                 // Set a better initial view for mobile
@@ -2189,6 +2202,25 @@
             
             // Add resize listener
             window.addEventListener('resize', debounceResize);
+            
+            // Handle browser back/forward buttons
+            window.addEventListener('popstate', function(event) {
+                const fragment = window.location.hash.substring(1);
+                if (fragment && availableCountryCodes.has(fragment.toLowerCase())) {
+                    selectCountry(fragment.toLowerCase());
+                } else if (!fragment && selectedCountry) {
+                    // Clear selection if URL has no fragment
+                    selectedCountry = null;
+                    currentArcs = [];
+                    globe.arcsData([]);
+                    globe.labelsData([]);
+                    globe.htmlElementsData([]);
+                    
+                    document.getElementById('selected-country').textContent = 'Click a country to explore';
+                    document.getElementById('data-inbox').style.display = 'none';
+                    document.getElementById('commodity-selector').style.display = 'none';
+                }
+            });
         }
 
         // Start the application
