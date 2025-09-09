@@ -29,10 +29,11 @@
             background: rgba(0, 0, 0, 0.9);
             border: 1px solid #4CAF50;
             color: #4CAF50;
-            padding: 8px 12px;
+            padding: 10px 15px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
         }
         
         .mobile-menu-toggle:hover {
@@ -402,7 +403,8 @@
             }
             
             .country-info {
-                font-size: 12px;
+                font-size: 14px;
+                line-height: 1.5;
             }
             
             .data-item {
@@ -425,18 +427,19 @@
                 top: 0;
                 left: 0;
                 right: 0;
-                bottom: auto;
+                bottom: 0;
                 width: 100%;
                 max-width: 100%;
-                border-radius: 0 0 8px 8px;
+                border-radius: 0;
                 transform: translateY(-100%);
                 z-index: 2000;
-                max-height: 60vh;
+                height: 100vh;
                 overflow-y: auto;
-                padding-top: 50px; /* Space for menu button */
-                background: rgba(0, 0, 0, 0.85);
-                backdrop-filter: blur(10px);
-                -webkit-backdrop-filter: blur(10px);
+                padding: 60px 20px 20px 20px;
+                box-sizing: border-box;
+                background: rgba(0, 0, 0, 0.95);
+                backdrop-filter: blur(15px);
+                -webkit-backdrop-filter: blur(15px);
             }
             
             .info-panel.mobile-visible {
@@ -481,21 +484,22 @@
             }
             
             .selected-country {
-                font-size: 14px;
+                font-size: 16px;
+                margin-bottom: 15px;
             }
             
             .commodity-selector {
-                margin-top: 10px;
-                padding-top: 10px;
+                margin-top: 15px;
+                padding-top: 15px;
             }
             
             .commodity-selector label {
-                font-size: 12px;
+                font-size: 14px;
             }
             
             .commodity-selector input {
-                padding: 6px;
-                font-size: 12px;
+                padding: 10px;
+                font-size: 14px;
             }
             
             .commodity-dropdown {
@@ -542,8 +546,7 @@
         /* Very small mobile (max-width: 375px) */
         @media screen and (max-width: 375px) {
             .info-panel {
-                padding: 15px;
-                padding-top: 45px;
+                padding: 55px 15px 15px 15px;
             }
             
             .data-inbox {
@@ -623,18 +626,17 @@
     <div id="arc-tooltip" class="arc-tooltip"></div>
     
     <!-- Mobile UI elements -->
-    <button class="mobile-menu-toggle" id="mobile-menu-toggle">☰ Menu</button>
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle">☰ Info</button>
     <div class="mobile-overlay" id="mobile-overlay"></div>
     <div class="mobile-message">Tap countries to explore • Pinch to zoom</div>
     
     <div class="info-panel" id="info-panel">
-        <button class="panel-close-btn" onclick="closeMobilePanel()" style="display: none; position: absolute; top: 10px; right: 10px; background: transparent; border: 1px solid #666; color: #fff; padding: 4px 8px; border-radius: 4px; cursor: pointer; z-index: 1;">✕</button>
         <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #444;">
-            <h2 style="margin: 0 0 8px 0; font-size: 18px; color: #fff;">Biodiversity impact of food consumption</h2>
-            <a href="https://www.nature.com/articles/s43016-025-01224-w" target="_blank" style="color: #4CAF50; text-decoration: none; font-size: 13px; display: block; margin-bottom: 4px;">View paper in Nature Food →</a>
-            <a href="https://www.conservation.cam.ac.uk" target="_blank" style="color: #4CAF50; text-decoration: none; font-size: 13px;">Cambridge Conservation Initiative →</a>
+            <h2 style="margin: 0 0 8px 0; font-size: 20px; color: #fff;">Biodiversity impact of food consumption</h2>
+            <a href="https://www.nature.com/articles/s43016-025-01224-w" target="_blank" style="color: #66ff66; text-decoration: none; font-size: 14px; display: block; margin-bottom: 6px;">View paper in Nature Food →</a>
+            <a href="https://www.conservation.cam.ac.uk" target="_blank" style="color: #66ff66; text-decoration: none; font-size: 14px;">Cambridge Conservation Initiative →</a>
         </div>
-        <div class="selected-country" id="selected-country">Click a country to select</div>
+        <div class="selected-country" id="selected-country">Tap a country on the globe to explore</div>
         <div class="country-info" id="country-info">
             Country codes available: <span id="available-countries">Loading...</span>
         </div>
@@ -670,7 +672,6 @@
     </div>
 
     <div id="data-inbox" class="data-inbox" style="display: none;">
-        <button class="panel-close-btn" onclick="closeMobilePanel()" style="display: none; position: absolute; top: 10px; right: 10px; background: transparent; border: 1px solid #666; color: #fff; padding: 4px 8px; border-radius: 4px; cursor: pointer; z-index: 1;">✕</button>
         <h3 id="data-inbox-header">Impact Data</h3>
         <div id="data-list"></div>
     </div>
@@ -1984,7 +1985,7 @@
             });
             
             overlay.style.display = 'none';
-            menuToggle.textContent = '☰ Menu';
+            menuToggle.textContent = '☰ Info';
         };
         
         // Mobile panel management
@@ -1996,11 +1997,7 @@
             
             let currentPanel = null;
             
-            // Show/hide close buttons on mobile
-            if (window.innerWidth <= 768) {
-                const closeButtons = document.querySelectorAll('.panel-close-btn');
-                closeButtons.forEach(btn => btn.style.display = 'block');
-            }
+            // No separate close buttons needed - using menu toggle
             
             function showPanel(panel) {
                 // Hide any current panel
@@ -2019,12 +2016,8 @@
                     overlay.style.display = 'block';
                     currentPanel = panel;
                     
-                    // Update button text based on which panel is showing
-                    if (panel === infoPanel) {
-                        menuToggle.textContent = '☰ Menu';
-                    } else if (panel === dataInbox) {
-                        menuToggle.textContent = '☰ Menu';
-                    }
+                    // Update button text to show close option
+                    menuToggle.textContent = '✕ Close';
                 }
             }
             
@@ -2035,7 +2028,7 @@
                     currentPanel.classList.remove('mobile-visible');
                     overlay.style.display = 'none';
                     currentPanel = null;
-                    menuToggle.textContent = '☰ Menu';
+                    menuToggle.textContent = '☰ Info';
                 } else {
                     // Show info panel by default
                     showPanel(infoPanel);
@@ -2048,7 +2041,7 @@
                     currentPanel.classList.remove('mobile-visible');
                     overlay.style.display = 'none';
                     currentPanel = null;
-                    menuToggle.textContent = '☰ Menu';
+                    menuToggle.textContent = '☰ Info';
                 }
             });
             
@@ -2068,6 +2061,8 @@
             
             // Store showPanel globally for access
             window.showMobilePanel = showPanel;
+            
+            // Don't auto-show panel - let users interact with globe immediately
         }
         
         // Initialize everything
