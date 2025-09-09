@@ -18,6 +18,38 @@
             width: 100vw;
             height: 100vh;
         }
+        
+        /* Mobile menu toggle button */
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 2001;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #4CAF50;
+            color: #4CAF50;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .mobile-menu-toggle:hover {
+            background: rgba(76, 175, 80, 0.2);
+        }
+        
+        /* Overlay for mobile panels */
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1999;
+        }
 
         .info-panel {
             position: absolute;
@@ -28,7 +60,9 @@
             border-radius: 8px;
             border: 1px solid #333;
             width: 350px;
+            max-width: calc(100vw - 40px);
             z-index: 1000;
+            transition: transform 0.3s ease;
         }
 
         .commodity-selector {
@@ -151,6 +185,24 @@
             max-width: 300px;
             z-index: 1000;
         }
+        
+        /* Simplified mobile message */
+        .mobile-message {
+            display: none;
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #4CAF50;
+            font-size: 12px;
+            color: #4CAF50;
+            z-index: 1000;
+            text-align: center;
+            max-width: calc(100vw - 20px);
+        }
 
         .data-inbox {
             position: absolute;
@@ -161,10 +213,12 @@
             border-radius: 8px;
             border: 1px solid #333;
             width: 350px;
+            max-width: calc(100vw - 40px);
             max-height: 80vh;
             overflow-y: auto;
             z-index: 1000;
             font-size: 12px;
+            transition: transform 0.3s ease;
         }
 
         .data-inbox > h3 {
@@ -320,6 +374,169 @@
             font-size: 11px;
             margin-left: 8px;
         }
+        
+        /* Tablet styles (768px - 1024px) */
+        @media screen and (max-width: 1024px) {
+            .info-panel {
+                width: 280px;
+                padding: 15px;
+                top: 15px;
+                left: 15px;
+            }
+            
+            .data-inbox {
+                width: 280px;
+                padding: 12px;
+                top: 15px;
+                right: 15px;
+            }
+            
+            .instructions {
+                display: none; /* Hide on tablets */
+            }
+            
+            .selected-country {
+                font-size: 16px;
+            }
+            
+            .country-info {
+                font-size: 12px;
+            }
+            
+            .data-item {
+                padding: 3px 5px;
+            }
+        }
+        
+        /* Mobile styles (max-width: 768px) */
+        @media screen and (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: block;
+            }
+            
+            .mobile-message {
+                display: block;
+            }
+            
+            .info-panel {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: auto;
+                width: 100%;
+                max-width: 100%;
+                border-radius: 0 0 8px 8px;
+                transform: translateY(-100%);
+                z-index: 2000;
+                max-height: 60vh;
+                overflow-y: auto;
+                padding-top: 50px; /* Space for menu button */
+            }
+            
+            .info-panel.mobile-visible {
+                transform: translateY(0);
+            }
+            
+            .data-inbox {
+                position: fixed;
+                top: auto;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100%;
+                max-width: 100%;
+                max-height: 70vh;
+                border-radius: 8px 8px 0 0;
+                transform: translateY(100%);
+                z-index: 2000;
+            }
+            
+            .data-inbox.mobile-visible {
+                transform: translateY(0);
+            }
+            
+            .instructions {
+                display: none;
+            }
+            
+            .arc-tooltip {
+                font-size: 11px;
+                padding: 6px 10px;
+                max-width: 200px;
+            }
+            
+            .selected-country {
+                font-size: 14px;
+            }
+            
+            .commodity-selector {
+                margin-top: 10px;
+                padding-top: 10px;
+            }
+            
+            .commodity-selector label {
+                font-size: 12px;
+            }
+            
+            .commodity-selector input {
+                padding: 6px;
+                font-size: 12px;
+            }
+            
+            .commodity-dropdown {
+                max-height: 200px;
+            }
+            
+            .commodity-option {
+                padding: 6px;
+                font-size: 11px;
+            }
+            
+            .data-item {
+                padding: 2px 4px;
+                margin-bottom: 2px;
+            }
+            
+            .commodity-name {
+                font-size: 11px;
+            }
+            
+            .source-country {
+                font-size: 10px;
+            }
+            
+            .impact-value {
+                font-size: 10px;
+            }
+            
+            .data-inbox h3 {
+                font-size: 12px;
+            }
+            
+            .section-stats {
+                font-size: 10px;
+            }
+        }
+        
+        /* Very small mobile (max-width: 375px) */
+        @media screen and (max-width: 375px) {
+            .info-panel {
+                padding: 12px;
+            }
+            
+            .data-inbox {
+                padding: 10px;
+            }
+            
+            .selected-country {
+                font-size: 13px;
+            }
+            
+            .commodity-dropdown {
+                max-height: 150px;
+            }
+        }
 
         .loading {
             position: absolute;
@@ -370,7 +587,13 @@
     
     <div id="arc-tooltip" class="arc-tooltip"></div>
     
-    <div class="info-panel">
+    <!-- Mobile UI elements -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle">☰ Menu</button>
+    <div class="mobile-overlay" id="mobile-overlay"></div>
+    <div class="mobile-message">Tap countries to explore • Pinch to zoom</div>
+    
+    <div class="info-panel" id="info-panel">
+        <button class="panel-close-btn" onclick="closeMobilePanel()" style="display: none; position: absolute; top: 10px; right: 10px; background: transparent; border: 1px solid #666; color: #fff; padding: 4px 8px; border-radius: 4px; cursor: pointer; z-index: 1;">✕</button>
         <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #444;">
             <h2 style="margin: 0 0 8px 0; font-size: 18px; color: #fff;">Biodiversity impact of food consumption</h2>
             <a href="https://www.nature.com/articles/s43016-025-01224-w" target="_blank" style="color: #4CAF50; text-decoration: none; font-size: 13px; display: block; margin-bottom: 4px;">View paper in Nature Food →</a>
@@ -412,7 +635,8 @@
     </div>
 
     <div id="data-inbox" class="data-inbox" style="display: none;">
-        <h3 id="data-inbox-header">Impact Data</h3>
+        <button class="panel-close-btn" onclick="closeMobilePanel()" style="display: none; position: absolute; top: 10px; right: 10px; background: transparent; border: 1px solid #666; color: #fff; padding: 4px 8px; border-radius: 4px; cursor: pointer; z-index: 1;">✕</button>
+        <h3 id="data-inbox-header" style="padding-right: 40px;">Impact Data</h3>
         <div id="data-list"></div>
     </div>
 
@@ -500,12 +724,16 @@
                 return;
             }
             
+            // Adjust settings for mobile
+            const isMobile = window.innerWidth <= 768;
+            const isTablet = window.innerWidth > 768 && window.innerWidth <= 1024;
+            
             globe = Globe()
                 .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
                 .backgroundColor('rgba(0,0,0,0)')
                 .showAtmosphere(true)
                 .atmosphereColor('lightblue')
-                .atmosphereAltitude(0.25)
+                .atmosphereAltitude(isMobile ? 0.15 : 0.25)
                 .arcsData([])
                 .arcColor(() => 'rgba(0, 255, 255, 0.9)')
                 .arcDashLength(1)     // Solid lines - no dashes
@@ -1314,8 +1542,10 @@
             // Sort arcs by impact value (highest first) and add rank
             arcs.sort((a, b) => b.impact - a.impact);
             
-            // Limit to top 100 arcs for performance
-            const maxArcs = 100;
+            // Limit arcs based on device - fewer on mobile for better performance
+            const isMobile = window.innerWidth <= 768;
+            const isTablet = window.innerWidth > 768 && window.innerWidth <= 1024;
+            const maxArcs = isMobile ? 30 : (isTablet ? 50 : 100);
             const displayArcs = arcs.slice(0, maxArcs);
             
             // Group arcs by source country to add offsets for multiple connections
@@ -1619,8 +1849,8 @@
                 `${countryName}${commodityText} (${totalRoutes})`;
         }
 
-        // Select a country
-        async function selectCountry(countryCode) {
+        // Select a country - make it globally accessible
+        window.selectCountry = async function(countryCode) {
             selectedCountry = countryCode;
             // Keep the current commodity selection instead of resetting
             const previousCommodity = selectedCommodity;
@@ -1686,10 +1916,118 @@
             globe.polygonsData(countryData);
         }
 
+        // Global function to close mobile panels
+        window.closeMobilePanel = function() {
+            const overlay = document.getElementById('mobile-overlay');
+            const menuToggle = document.getElementById('mobile-menu-toggle');
+            const panels = document.querySelectorAll('.mobile-visible');
+            
+            panels.forEach(panel => {
+                panel.classList.remove('mobile-visible');
+            });
+            
+            overlay.style.display = 'none';
+            menuToggle.textContent = '☰ Menu';
+        };
+        
+        // Mobile panel management
+        function setupMobileUI() {
+            const menuToggle = document.getElementById('mobile-menu-toggle');
+            const overlay = document.getElementById('mobile-overlay');
+            const infoPanel = document.getElementById('info-panel');
+            const dataInbox = document.getElementById('data-inbox');
+            
+            let currentPanel = null;
+            
+            // Show/hide close buttons on mobile
+            if (window.innerWidth <= 768) {
+                const closeButtons = document.querySelectorAll('.panel-close-btn');
+                closeButtons.forEach(btn => btn.style.display = 'block');
+            }
+            
+            function showPanel(panel) {
+                // Hide any current panel
+                if (currentPanel && currentPanel !== panel) {
+                    currentPanel.classList.remove('mobile-visible');
+                }
+                
+                // Toggle the selected panel
+                if (panel.classList.contains('mobile-visible')) {
+                    panel.classList.remove('mobile-visible');
+                    overlay.style.display = 'none';
+                    currentPanel = null;
+                    menuToggle.textContent = '☰ Menu';
+                } else {
+                    panel.classList.add('mobile-visible');
+                    overlay.style.display = 'block';
+                    currentPanel = panel;
+                    
+                    // Update button text based on which panel is showing
+                    if (panel === infoPanel) {
+                        menuToggle.textContent = '☰ Menu';
+                    } else if (panel === dataInbox) {
+                        menuToggle.textContent = '☰ Menu';
+                    }
+                }
+            }
+            
+            // Menu toggle button handler
+            menuToggle.addEventListener('click', () => {
+                if (currentPanel) {
+                    // Close current panel
+                    currentPanel.classList.remove('mobile-visible');
+                    overlay.style.display = 'none';
+                    currentPanel = null;
+                    menuToggle.textContent = '☰ Menu';
+                } else {
+                    // Show info panel by default
+                    showPanel(infoPanel);
+                }
+            });
+            
+            // Overlay click to close panels
+            overlay.addEventListener('click', () => {
+                if (currentPanel) {
+                    currentPanel.classList.remove('mobile-visible');
+                    overlay.style.display = 'none';
+                    currentPanel = null;
+                    menuToggle.textContent = '☰ Menu';
+                }
+            });
+            
+            // Auto-show data panel on mobile when country is selected
+            if (window.innerWidth <= 768) {
+                const originalSelectCountry = window.selectCountry;
+                window.selectCountry = async function(countryCode) {
+                    await originalSelectCountry(countryCode);
+                    // Show data panel after country selection on mobile
+                    setTimeout(() => {
+                        if (dataInbox.style.display !== 'none') {
+                            showPanel(dataInbox);
+                        }
+                    }, 500);
+                };
+            }
+            
+            // Store showPanel globally for access
+            window.showMobilePanel = showPanel;
+        }
+        
         // Initialize everything
         async function init() {
             await loadAvailableCountries();
             initGlobe();
+            setupMobileUI();
+            
+            // Adjust globe view for mobile
+            if (window.innerWidth <= 768) {
+                // Set a better initial view for mobile
+                setTimeout(() => {
+                    if (globe) {
+                        globe.pointOfView({ lat: 20, lng: 0, altitude: 2.5 }, 1000);
+                    }
+                }, 1000);
+            }
         }
 
         // Start the application
