@@ -374,10 +374,34 @@
         }
 
         .impact-value {
-            color: #4CAF50;
             font-family: monospace;
             font-size: 11px;
             margin-left: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+        }
+        
+        .impact-score {
+            font-weight: bold;
+        }
+        
+        .impact-rank {
+            font-size: 9px;
+            opacity: 0.8;
+        }
+        
+        .impact-value.high-impact-value {
+            color: #ff6666;
+        }
+        
+        .impact-value.medium-impact-value {
+            color: #ffbb66;
+        }
+        
+        .impact-value.low-impact-value {
+            color: #66ff66;
         }
         
         /* Tablet styles (768px - 1024px) - panels already sized correctly above */
@@ -1322,6 +1346,17 @@
                 }
             });
             
+            // Create a combined sorted list for percentile calculation
+            const allArcsSorted = [...arcs].sort((a, b) => b.impact - a.impact);
+            const totalItems = allArcsSorted.length;
+            
+            // Create a map of impact value to percentile
+            const impactToPercentile = new Map();
+            allArcsSorted.forEach((arc, index) => {
+                const percentile = Math.round(((index + 1) / totalItems) * 100);
+                impactToPercentile.set(arc.impact, percentile);
+            });
+            
             // Calculate total impacts for summaries
             const domesticTotal = domesticArcs.reduce((sum, arc) => sum + arc.impact, 0);
             const internationalTotal = internationalArcs.reduce((sum, arc) => sum + arc.impact, 0);
@@ -1390,10 +1425,16 @@
                 const needsExpansion = internationalArcs.length > showLimit;
                 
                 internationalArcs.forEach((arc, index) => {
-                    const impactCategory = arc.impact > maxImpact * 0.7 ? 'high-impact' : 
-                                         arc.impact > maxImpact * 0.3 ? 'medium-impact' : 'low-impact';
+                    const impactRatio = arc.impact / maxImpact;
+                    const impactCategory = impactRatio > 0.7 ? 'high-impact' : 
+                                         impactRatio > 0.3 ? 'medium-impact' : 'low-impact';
+                    const impactValueClass = impactRatio > 0.7 ? 'high-impact-value' : 
+                                            impactRatio > 0.3 ? 'medium-impact-value' : 'low-impact-value';
                     
                     const barWidth = (arc.impact / localMaxImpact) * 100;
+                    
+                    // Get percentile from the combined country ranking
+                    const percentile = impactToPercentile.get(arc.impact) || 100;
                     
                     const dataItem = document.createElement('div');
                     const isCollapsed = needsExpansion && index >= showLimit;
@@ -1406,7 +1447,10 @@
                                 <div class="commodity-name" title="Click to filter to ${arc.commodity}">${arc.commodity}</div>
                                 <div class="source-country" data-country="${arc.sourceCountry}">From: ${getCountryName(arc.sourceCountry)}</div>
                             </div>
-                            <div class="impact-value">${arc.impact.toExponential(2)}</div>
+                            <div class="impact-value ${impactValueClass}">
+                                <span class="impact-score">${arc.impact.toExponential(2)}</span>
+                                <span class="impact-rank">Top ${percentile}%</span>
+                            </div>
                         </div>
                     `;
                     
@@ -1471,10 +1515,16 @@
                 const needsExpansion = domesticArcs.length > showLimit;
                 
                 domesticArcs.forEach((arc, index) => {
-                    const impactCategory = arc.impact > maxImpact * 0.7 ? 'high-impact' : 
-                                         arc.impact > maxImpact * 0.3 ? 'medium-impact' : 'low-impact';
+                    const impactRatio = arc.impact / maxImpact;
+                    const impactCategory = impactRatio > 0.7 ? 'high-impact' : 
+                                         impactRatio > 0.3 ? 'medium-impact' : 'low-impact';
+                    const impactValueClass = impactRatio > 0.7 ? 'high-impact-value' : 
+                                            impactRatio > 0.3 ? 'medium-impact-value' : 'low-impact-value';
                     
                     const barWidth = (arc.impact / localMaxImpact) * 100;
+                    
+                    // Get percentile from the combined country ranking
+                    const percentile = impactToPercentile.get(arc.impact) || 100;
                     
                     const dataItem = document.createElement('div');
                     const isCollapsed = needsExpansion && index >= showLimit;
@@ -1483,7 +1533,10 @@
                         <div class="impact-bar" style="width: ${barWidth}%"></div>
                         <div class="data-item-content">
                             <div class="commodity-name" title="Click to filter to ${arc.commodity}">${arc.commodity}</div>
-                            <div class="impact-value">${arc.impact.toExponential(2)}</div>
+                            <div class="impact-value ${impactValueClass}">
+                                <span class="impact-score">${arc.impact.toExponential(2)}</span>
+                                <span class="impact-rank">Top ${percentile}%</span>
+                            </div>
                         </div>
                     `;
                     
