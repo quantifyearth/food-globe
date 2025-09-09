@@ -57,10 +57,10 @@
             top: 20px;
             left: 20px;
             background: rgba(0, 0, 0, 0.8);
-            padding: 20px;
+            padding: 15px;
             border-radius: 8px;
             border: 1px solid #333;
-            width: 350px;
+            width: 280px;
             max-width: calc(100vw - 40px);
             z-index: 1000;
             transition: transform 0.3s ease;
@@ -161,7 +161,7 @@
         }
 
         .selected-country {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: bold;
             color: #4CAF50;
             margin-bottom: 10px;
@@ -171,7 +171,7 @@
         }
 
         .country-info {
-            font-size: 14px;
+            font-size: 12px;
             color: #ccc;
         }
 
@@ -183,8 +183,10 @@
             padding: 15px;
             border-radius: 8px;
             border: 1px solid #333;
-            max-width: 300px;
+            width: 280px;
+            max-width: calc(100vw - 40px);
             z-index: 1000;
+            font-size: 12px;
         }
         
         /* Simplified mobile message */
@@ -210,10 +212,10 @@
             top: 20px;
             right: 20px;
             background: rgba(0, 0, 0, 0.9);
-            padding: 15px;
+            padding: 12px;
             border-radius: 8px;
             border: 1px solid #333;
-            width: 350px;
+            width: 280px;
             max-width: calc(100vw - 40px);
             max-height: 80vh;
             overflow-y: auto;
@@ -378,35 +380,8 @@
             margin-left: 8px;
         }
         
-        /* Tablet styles (768px - 1024px) */
+        /* Tablet styles (768px - 1024px) - panels already sized correctly above */
         @media screen and (max-width: 1024px) {
-            .info-panel {
-                width: 280px;
-                padding: 15px;
-                top: 15px;
-                left: 15px;
-            }
-            
-            .data-inbox {
-                width: 280px;
-                padding: 12px;
-                top: 15px;
-                right: 15px;
-            }
-            
-            .instructions {
-                display: none; /* Hide on tablets */
-            }
-            
-            .selected-country {
-                font-size: 16px;
-            }
-            
-            .country-info {
-                font-size: 14px;
-                line-height: 1.5;
-            }
-            
             .data-item {
                 padding: 3px 5px;
             }
@@ -636,7 +611,7 @@
             <a href="https://www.nature.com/articles/s43016-025-01224-w" target="_blank" style="color: #66ff66; text-decoration: none; font-size: 14px; display: block; margin-bottom: 6px;">View paper in Nature Food →</a>
             <a href="https://www.conservation.cam.ac.uk" target="_blank" style="color: #66ff66; text-decoration: none; font-size: 14px;">Cambridge Conservation Initiative →</a>
         </div>
-        <div class="selected-country" id="selected-country">Tap a country on the globe to explore</div>
+        <div class="selected-country" id="selected-country">Click a country to explore</div>
         <div class="country-info" id="country-info">
             Country codes available: <span id="available-countries">Loading...</span>
         </div>
@@ -1020,7 +995,24 @@
                     const countryCode = getCountryCode(polygon);
                     
                     if (availableCountryCodes.has(countryCode)) {
-                        selectCountry(countryCode);
+                        // On mobile, if clicking the same country, toggle the data panel
+                        if (window.innerWidth <= 768 && selectedCountry === countryCode) {
+                            const dataInbox = document.getElementById('data-inbox');
+                            const isVisible = dataInbox.classList.contains('mobile-visible');
+                            
+                            if (!isVisible && dataInbox.style.display !== 'none') {
+                                // Re-show the data panel
+                                if (window.showMobilePanel) {
+                                    window.showMobilePanel(dataInbox);
+                                }
+                            } else {
+                                // Close the panel if it's open
+                                window.closeMobilePanel();
+                            }
+                        } else {
+                            // Select new country
+                            selectCountry(countryCode);
+                        }
                     } else {
                         console.log(`Country ${countryCode} not available in dataset`);
                         const countryName = getCountryName(countryCode);
