@@ -224,9 +224,11 @@
         .data-inbox > h3 {
             margin: 0 0 10px 0;
             padding: 8px;
+            padding-right: 45px;
             background: rgba(76, 175, 80, 0.1);
             border-radius: 4px;
             border: 1px solid rgba(76, 175, 80, 0.3);
+            position: relative;
         }
         
         .data-inbox > h3 .main-title {
@@ -432,6 +434,9 @@
                 max-height: 60vh;
                 overflow-y: auto;
                 padding-top: 50px; /* Space for menu button */
+                background: rgba(0, 0, 0, 0.85);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
             }
             
             .info-panel.mobile-visible {
@@ -446,10 +451,19 @@
                 bottom: 0;
                 width: 100%;
                 max-width: 100%;
-                max-height: 70vh;
+                max-height: 85vh;
                 border-radius: 8px 8px 0 0;
                 transform: translateY(100%);
                 z-index: 2000;
+                padding: 20px;
+                box-sizing: border-box;
+                background: rgba(0, 0, 0, 0.85);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+            
+            .data-inbox .panel-close-btn {
+                right: 15px !important;
             }
             
             .data-inbox.mobile-visible {
@@ -494,47 +508,68 @@
             }
             
             .data-item {
-                padding: 2px 4px;
-                margin-bottom: 2px;
+                padding: 6px 8px;
+                margin-bottom: 4px;
             }
             
             .commodity-name {
-                font-size: 11px;
-            }
-            
-            .source-country {
-                font-size: 10px;
-            }
-            
-            .impact-value {
-                font-size: 10px;
-            }
-            
-            .data-inbox h3 {
                 font-size: 12px;
             }
             
+            .source-country {
+                font-size: 11px;
+            }
+            
+            .impact-value {
+                font-size: 11px;
+            }
+            
+            .data-inbox h3 {
+                font-size: 13px;
+            }
+            
             .section-stats {
-                font-size: 10px;
+                font-size: 11px;
+            }
+            
+            .see-more-btn {
+                padding: 6px 10px;
+                font-size: 12px;
+                margin: 10px 0;
             }
         }
         
         /* Very small mobile (max-width: 375px) */
         @media screen and (max-width: 375px) {
             .info-panel {
-                padding: 12px;
+                padding: 15px;
+                padding-top: 45px;
             }
             
             .data-inbox {
-                padding: 10px;
+                padding: 15px;
+                max-height: 90vh;
             }
             
             .selected-country {
-                font-size: 13px;
+                font-size: 14px;
             }
             
             .commodity-dropdown {
                 max-height: 150px;
+            }
+            
+            .data-item {
+                padding: 5px 8px;
+                margin-bottom: 3px;
+            }
+            
+            .commodity-name {
+                font-size: 13px;
+            }
+            
+            .impact-value {
+                font-size: 12px;
             }
         }
 
@@ -636,7 +671,7 @@
 
     <div id="data-inbox" class="data-inbox" style="display: none;">
         <button class="panel-close-btn" onclick="closeMobilePanel()" style="display: none; position: absolute; top: 10px; right: 10px; background: transparent; border: 1px solid #666; color: #fff; padding: 4px 8px; border-radius: 4px; cursor: pointer; z-index: 1;">✕</button>
-        <h3 id="data-inbox-header" style="padding-right: 40px;">Impact Data</h3>
+        <h3 id="data-inbox-header">Impact Data</h3>
         <div id="data-list"></div>
     </div>
 
@@ -1292,18 +1327,40 @@
             dataInbox.style.display = 'block';
             dataList.innerHTML = '';
             
-            // Update the header with variance info if a commodity is selected
+            // Update the header with country name and variance info
             const header = document.getElementById('data-inbox-header');
-            if (selectedCommodity) {
-                header.innerHTML = `
-                    <div class="main-title">Impact Data - ${selectedCommodity}</div>
-                    <div class="variance-info">
-                        Spatial variance: <span class="variance-value">${ordersOfMagnitude}</span> orders of magnitude
-                        (${localMinImpact.toExponential(1)} to ${localMaxImpact.toExponential(1)})
-                    </div>
-                `;
+            const countryName = getCountryName(selectedCountry);
+            const isMobile = window.innerWidth <= 768;
+            
+            if (isMobile) {
+                // Mobile: Always show country name prominently
+                if (selectedCommodity) {
+                    header.innerHTML = `
+                        <div class="main-title">${countryName}</div>
+                        <div style="font-size: 11px; color: #4CAF50; margin-top: 2px;">${selectedCommodity}</div>
+                        <div class="variance-info">
+                            <span class="variance-value">${ordersOfMagnitude}</span> orders of magnitude variance
+                        </div>
+                    `;
+                } else {
+                    header.innerHTML = `
+                        <div class="main-title">${countryName}</div>
+                        <div style="font-size: 11px; color: #aaa; margin-top: 2px;">All commodities</div>
+                    `;
+                }
             } else {
-                header.innerHTML = '<div class="main-title">Impact Data</div>';
+                // Desktop: Original layout
+                if (selectedCommodity) {
+                    header.innerHTML = `
+                        <div class="main-title">Impact Data - ${selectedCommodity}</div>
+                        <div class="variance-info">
+                            Spatial variance: <span class="variance-value">${ordersOfMagnitude}</span> orders of magnitude
+                            (${localMinImpact.toExponential(1)} to ${localMaxImpact.toExponential(1)})
+                        </div>
+                    `;
+                } else {
+                    header.innerHTML = '<div class="main-title">Impact Data</div>';
+                }
             }
             
             // Add international section first if there are international impacts
